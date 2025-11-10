@@ -69,7 +69,7 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Exercise> _filteredExercises = [];
   final TextEditingController _searchController = TextEditingController();
 
-  static const double _kTabletBreakpoint = 600.0;
+
 
   final Map<String, String> _exerciseImageMap = {
     'Chest Press': 'assets/images/exercises/chest-press.webp',
@@ -251,135 +251,68 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth > _kTabletBreakpoint) {
-                  return GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 8.0,
-                      mainAxisSpacing: 8.0,
-                      childAspectRatio: 1.5, // Adjust as needed
+            child: ListView.builder(
+              itemCount: _filteredExercises.length,
+              itemBuilder: (context, index) {
+                final exercise = _filteredExercises[index];
+                final placeHolderImageUrl = 'https://placehold.co/400x200.png?text=${Uri.encodeComponent(exercise.name)}';
+                return InkWell(
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ExerciseDetailView(
+                          exercise: exercise,
+                        ),
+                      ),
+                    );
+                    _saveExercises();
+                  },
+                  onLongPress: () {
+                    _showDeleteExerciseDialog(exercise);
+                  },
+                  child: SizedBox(
+                    height: 150.0, // Fixed height for ListView cards
+                    child: Card(
+                      elevation: 10.0,
+                      color: Theme.of(context).colorScheme.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15.0),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: exercise.hasLocalImage && exercise.imageUrl != null
+                                ? Image.asset(
+                                    exercise.imageUrl!,
+                                    fit: BoxFit.cover,
+                                  )
+                                : CachedNetworkImage(
+                                    imageUrl: placeHolderImageUrl,
+                                    placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                                    errorWidget: (context, url, error) => const Icon(Icons.error),
+                                  ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(
+                              exercise.name,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onPrimary),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    itemCount: _filteredExercises.length,
-                    itemBuilder: (context, index) {
-                      final exercise = _filteredExercises[index];
-                      final placeHolderImageUrl = 'https://placehold.co/400x200.png?text=${Uri.encodeComponent(exercise.name)}';
-                      return InkWell(
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ExerciseDetailView(
-                                exercise: exercise,
-                              ),
-                            ),
-                          );
-                          _saveExercises();
-                        },
-                        onLongPress: () {
-                          _showDeleteExerciseDialog(exercise);
-                        },
-                        child: Card(
-                          elevation: 10.0,
-                          color: Theme.of(context).colorScheme.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15.0),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Column(
-                            children: [
-                              exercise.hasLocalImage && exercise.imageUrl != null
-                                  ? Image.asset(
-                                      exercise.imageUrl!,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : CachedNetworkImage(
-                                      imageUrl: placeHolderImageUrl,
-                                      placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                                      errorWidget: (context, url, error) => const Icon(Icons.error),
-                                    ),
-                              Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Text(
-                                  exercise.name,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineSmall
-                                      ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onPrimary),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                } else {
-                  return ListView.builder(
-                    itemCount: _filteredExercises.length,
-                    itemBuilder: (context, index) {
-                      final exercise = _filteredExercises[index];
-                      final placeHolderImageUrl = 'https://placehold.co/400x200.png?text=${Uri.encodeComponent(exercise.name)}';
-                      return InkWell(
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ExerciseDetailView(
-                                exercise: exercise,
-                              ),
-                            ),
-                          );
-                          _saveExercises();
-                        },
-                        onLongPress: () {
-                          _showDeleteExerciseDialog(exercise);
-                        },
-                        child: Card(
-                          elevation: 10.0,
-                          color: Theme.of(context).colorScheme.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15.0),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Column(
-                            children: [
-                              exercise.hasLocalImage && exercise.imageUrl != null
-                                  ? Image.asset(
-                                      exercise.imageUrl!,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : CachedNetworkImage(
-                                      imageUrl: placeHolderImageUrl,
-                                      placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                                      errorWidget: (context, url, error) => const Icon(Icons.error),
-                                    ),
-                              Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Text(
-                                  exercise.name,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineSmall
-                                      ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onPrimary),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                }
+                  ),
+                );
               },
             ),
           ),
