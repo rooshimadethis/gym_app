@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gym_app/models.dart';
+import 'package:gym_app/stopwatch_modal.dart';
 
 class ExerciseDetailView extends StatefulWidget {
   final Exercise exercise;
@@ -126,6 +127,14 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
 
       FocusScope.of(context).requestFocus(_repsFocusNodes[_lastFocusedSet + 1]);
     }
+
+    // Show the stopwatch modal after logging the set
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return const StopwatchModal();
+      },
+    );
   }
 
   @override
