@@ -1,16 +1,5 @@
 # gym_app
 
-A new Flutter project.
+A Flutter app designed for users who are members of busy gyms. Instead of set exercises broken into days (which leads to lots of waiting for machines), this app will track exercises that should be done given available gym equipment.
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+This means a list of all exercises will be the main tool available. Towards the top of the list will be exercises that are important (like compound lifts) and/or exercises that haven't been done recently. As exercises are completed, they're moved back towards the bottom, this way the user can make sure to hit all muscles.
