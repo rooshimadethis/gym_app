@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gym_app/models.dart';
 import 'package:gym_app/stopwatch_modal.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:gym_app/stopwatch_task_handler.dart';
+import 'dart:io';
 
 class ExerciseDetailView extends StatefulWidget {
   final Exercise exercise;
@@ -20,6 +23,47 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
   late List<TextEditingController> _repsControllers;
   late List<FocusNode> _weightFocusNodes;
   late List<FocusNode> _repsFocusNodes;
+
+  Future<void> _requestPermissions() async {
+    final NotificationPermission notificationPermission =
+        await FlutterForegroundTask.checkNotificationPermission();
+    if (notificationPermission != NotificationPermission.granted) {
+      await FlutterForegroundTask.requestNotificationPermission();
+    }
+
+    if (Platform.isAndroid) {
+      if (!await FlutterForegroundTask.isIgnoringBatteryOptimizations) {
+        await FlutterForegroundTask.requestIgnoreBatteryOptimization();
+      }
+
+      if (!await FlutterForegroundTask.canScheduleExactAlarms) {
+        await FlutterForegroundTask.openAlarmsAndRemindersSettings();
+      }
+    }
+  }
+
+  void _initService() {
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'foreground_service',
+        channelName: 'Foreground Service Notification',
+        channelDescription:
+            'This notification appears when the foreground service is running.',
+        onlyAlertOnce: true,
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(
+        showNotification: false,
+        playSound: false,
+      ),
+      foregroundTaskOptions: ForegroundTaskOptions(
+        eventAction: ForegroundTaskEventAction.repeat(1000),
+        autoRunOnBoot: true,
+        autoRunOnMyPackageReplaced: true,
+        allowWakeLock: true,
+        allowWifiLock: true,
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -140,6 +184,9 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
 
       FocusScope.of(context).requestFocus(_repsFocusNodes[_lastFocusedSet + 1]);
     }
+
+    _requestPermissions();
+    _initService();
 
     // Show the stopwatch modal after logging the set
     showDialog(
