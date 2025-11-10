@@ -7,28 +7,36 @@ void startStopwatchCallback() {
 }
 
 class StopwatchTaskHandler extends TaskHandler {
-  late Stopwatch _stopwatch;
-  late Timer _timer;
+  int _currentElapsedMilliseconds = 0;
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
-    _stopwatch = Stopwatch();
-    _stopwatch.start();
+    // No internal stopwatch needed, time will be received from UI.
   }
 
   @override
   void onRepeatEvent(DateTime timestamp) {
-    final String formattedTime = _formatTime(_stopwatch.elapsedMilliseconds);
-    FlutterForegroundTask.updateService(
-      notificationTitle: 'Rest Timer',
-      notificationText: 'Elapsed: $formattedTime',
-    );
+    // This event is triggered periodically, but the notification update
+    // is handled by onReceiveData when the UI sends new data.
+    // We can use this to ensure the service stays alive, or for other periodic tasks.
   }
 
   @override
   Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
-    _stopwatch.stop();
-    _timer.cancel();
+    // No internal stopwatch to stop.
+  }
+
+  @override
+  void onReceiveData(Object data) {
+    if (data is Map<String, dynamic>) {
+      _currentElapsedMilliseconds = data['elapsedMilliseconds'] as int;
+      final String formattedTime = _formatTime(_currentElapsedMilliseconds);
+
+      FlutterForegroundTask.updateService(
+        notificationTitle: 'Rest Timer',
+        notificationText: 'Elapsed: $formattedTime',
+      );
+    }
   }
 
   @override

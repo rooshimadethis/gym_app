@@ -22,9 +22,15 @@ class _StopwatchModalState extends State<StopwatchModal> {
     _stopwatch.start();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {});
+      FlutterForegroundTask.sendDataToTask({
+        'elapsedMilliseconds': _stopwatch.elapsedMilliseconds,
+      });
     });
 
     _startForegroundService();
+    FlutterForegroundTask.sendDataToTask({
+      'elapsedMilliseconds': _stopwatch.elapsedMilliseconds,
+    });
   }
 
   Future<void> _startForegroundService() async {
