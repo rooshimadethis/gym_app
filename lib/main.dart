@@ -85,16 +85,19 @@ class _MyHomePageState extends State<MyHomePage> {
     final exercisesJson = prefs.getString('exercises_data');
     if (exercisesJson == null) {
       _allExercises = [
-        Exercise(name: 'Push-ups'),
-        Exercise(name: 'Pull-ups'),
-        Exercise(name: 'Squats'),
-        Exercise(name: 'Deadlifts'),
-        Exercise(name: 'Bench Press'),
-        Exercise(name: 'Overhead Press'),
-        Exercise(name: 'Rows'),
-        Exercise(name: 'Curls'),
-        Exercise(name: 'Tricep Extensions'),
-        Exercise(name: 'Lunges'),
+        Exercise(name: 'Chest Press'),
+        Exercise(name: 'Lat Pull Down'),
+        Exercise(name: 'Cable Row'),
+        Exercise(name: 'Leg Press'),
+        Exercise(name: 'Calf Raise'),
+        Exercise(name: 'Hamstring Curl'),
+        Exercise(name: 'Dumbbell Lateral Raise'),
+        Exercise(name: 'Dumbbell Shoulder Press'),
+        Exercise(name: 'Tricep Pushdown'),
+        Exercise(name: 'Bicep Curl Machine'),
+        Exercise(name: 'Wrist Curls'),
+        Exercise(name: 'Cable Shrug'),
+        Exercise(name: 'Deadlift'),
       ];
     } else {
       final exercisesList = jsonDecode(exercisesJson) as List;
@@ -201,7 +204,7 @@ class _MyHomePageState extends State<MyHomePage> {
               itemBuilder: (context, index) {
                 final exercise = _filteredExercises[index];
                 final imageUrl =
-                    'https://placehold.co/400x200.png?text=${exercise.name}';
+                    'https://placehold.co/400x100.png?text=${exercise.name}';
                 return InkWell(
                   onTap: () async {
                     await Navigator.push(
