@@ -16,8 +16,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Gym App',
+      title: 'rooshi\'s get swole',
       theme: ThemeData(
+        fontFamily: 'StackSansText',
         colorScheme: const ColorScheme(
           brightness: Brightness.light,
           primary: Color(0xFFF57C00),
@@ -34,6 +35,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       darkTheme: ThemeData(
+        fontFamily: 'StackSansText',
         colorScheme: const ColorScheme(
           brightness: Brightness.dark,
           primary: Color(0xFFF57C00),
@@ -50,7 +52,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       themeMode: ThemeMode.dark,
-      home: const MyHomePage(title: 'Gym App'),
+      home: const MyHomePage(title: 'rooshi\'s get swole'),
     );
   }
 }
@@ -217,12 +219,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   },
                   child: Card(
                     elevation: 10.0,
+                    color: Theme.of(context).colorScheme.primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15.0),
-                      side: BorderSide(
-                        color: Theme.of(context).colorScheme.primary,
-                        width: 2.0, // Adjust border width as needed
-                      ),
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: Column(
@@ -241,7 +240,11 @@ class _MyHomePageState extends State<MyHomePage> {
                             style: Theme.of(context)
                                 .textTheme
                                 .headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                                ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimary),
                           ),
                         ),
                       ],
