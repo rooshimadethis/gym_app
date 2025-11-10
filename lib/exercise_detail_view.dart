@@ -167,27 +167,32 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
           },
         ),
       ),
-      body: Column(
-        children: [
-          widget.exercise.hasLocalImage && widget.exercise.imageUrl != null
-              ? Image.asset(
-                  widget.exercise.imageUrl!,
-                  fit: BoxFit.cover,
-                )
-              : CachedNetworkImage(
-                  imageUrl: placeHolderImageUrl,
-                  placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                  errorWidget: (context, url, error) => const Icon(Icons.error),
-                ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              widget.exercise.name,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            widget.exercise.hasLocalImage && widget.exercise.imageUrl != null
+                ? Image.asset(
+                    widget.exercise.imageUrl!,
+                    fit: BoxFit.cover,
+                  )
+                : CachedNetworkImage(
+                    imageUrl: placeHolderImageUrl,
+                    placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                    errorWidget: (context, url, error) => const Icon(Icons.error),
+                  ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                widget.exercise.name,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
             ),
-          ),
-          Expanded(
-            child: ListView.builder(
+            // The Expanded widget below needs to be removed or adjusted when wrapped in SingleChildScrollView
+            // as Expanded inside SingleChildScrollView doesn't make sense.
+            // Instead, we'll make the ListView.builder shrinkWrap and physics scrollable.
+            ListView.builder(
+              shrinkWrap: true, // Important: make ListView take only needed space
+              physics: const NeverScrollableScrollPhysics(), // Disable its own scrolling
               itemCount: widget.exercise.sets.length,
               itemBuilder: (context, index) {
                 return Padding(
@@ -260,55 +265,55 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                 );
               },
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _removeSet,
-                  icon: const Icon(Icons.remove),
-                  label: const Text('Remove Set'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _removeSet,
+                    icon: const Icon(Icons.remove),
+                    label: const Text('Remove Set'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                ElevatedButton.icon(
-                  onPressed: _addSet,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Set'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  const SizedBox(width: 16),
+                  ElevatedButton.icon(
+                    onPressed: _addSet,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Set'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
-              onPressed: () {
-                HapticFeedback.mediumImpact();
-                _saveData();
-                if (isLastSetFocused) {
-                  Navigator.pop(context);
-                } else {
-                  _logSet();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                minimumSize: const Size(double.infinity, 50),
+                ],
               ),
-              child: Text(isLastSetFocused ? 'Finish Exercise' : 'Log Set'),
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ElevatedButton(
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  _saveData();
+                  if (isLastSetFocused) {
+                    Navigator.pop(context);
+                  } else {
+                    _logSet();
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                child: Text(isLastSetFocused ? 'Finish Exercise' : 'Log Set'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
