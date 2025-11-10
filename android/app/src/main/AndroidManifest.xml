@@ -2,6 +2,7 @@
     <application
         android:label="rooshi's get swole"
         android:name="${applicationName}"
+        android:hasFragileUserData="true"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
