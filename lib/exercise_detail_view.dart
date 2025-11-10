@@ -120,8 +120,18 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
   }
 
   void _logSet() {
+    final weight = _weightControllers[_lastFocusedSet].text;
+    if (weight.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a weight before logging the set.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     if (_lastFocusedSet < widget.exercise.sets.length - 1) {
-      final weight = _weightControllers[_lastFocusedSet].text;
       final reps = _repsControllers[_lastFocusedSet].text;
 
       _weightControllers[_lastFocusedSet + 1].text = weight;
