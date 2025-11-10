@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 @pragma('vm:entry-point')
@@ -6,32 +7,28 @@ void startStopwatchCallback() {
 }
 
 class StopwatchTaskHandler extends TaskHandler {
+  late Stopwatch _stopwatch;
+  late Timer _timer;
+
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
-    // The service is started, but the stopwatch time will be sent from the UI.
+    _stopwatch = Stopwatch();
+    _stopwatch.start();
   }
 
   @override
   void onRepeatEvent(DateTime timestamp) {
-    // This will not be used as we are sending data from the UI.
+    final String formattedTime = _formatTime(_stopwatch.elapsedMilliseconds);
+    FlutterForegroundTask.updateService(
+      notificationTitle: 'Rest Timer',
+      notificationText: 'Elapsed: $formattedTime',
+    );
   }
 
   @override
   Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
-    // Clean up any resources if needed.
-  }
-
-  @override
-  void onReceiveData(Object data) {
-    if (data is Map<String, dynamic>) {
-      final int elapsedMilliseconds = data['elapsedMilliseconds'];
-      final String formattedTime = _formatTime(elapsedMilliseconds);
-
-      FlutterForegroundTask.updateService(
-        notificationTitle: 'Rest Timer',
-        notificationText: 'Elapsed: $formattedTime',
-      );
-    }
+    _stopwatch.stop();
+    _timer.cancel();
   }
 
   @override
