@@ -1,13 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:gym_app/models.dart';
 
 class ExerciseDetailView extends StatefulWidget {
-  final String exerciseName;
+  final Exercise exercise;
 
   const ExerciseDetailView({
     super.key,
-    required this.exerciseName,
+    required this.exercise,
   });
 
   @override
@@ -15,7 +16,6 @@ class ExerciseDetailView extends StatefulWidget {
 }
 
 class _ExerciseDetailViewState extends State<ExerciseDetailView> {
-  int _sets = 3;
   int _lastFocusedSet = 0;
 
   late List<TextEditingController> _weightControllers;
@@ -30,12 +30,15 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
   }
 
   void _initializeControllersAndFocusNodes() {
-    _weightControllers = List.generate(_sets, (i) => TextEditingController());
-    _repsControllers = List.generate(_sets, (i) => TextEditingController());
-    _weightFocusNodes = List.generate(_sets, (i) => FocusNode());
-    _repsFocusNodes = List.generate(_sets, (i) => FocusNode());
+    final sets = widget.exercise.sets;
+    _weightControllers =
+        List.generate(sets.length, (i) => TextEditingController(text: sets[i].weight));
+    _repsControllers =
+        List.generate(sets.length, (i) => TextEditingController(text: sets[i].reps));
+    _weightFocusNodes = List.generate(sets.length, (i) => FocusNode());
+    _repsFocusNodes = List.generate(sets.length, (i) => FocusNode());
 
-    for (int i = 0; i < _sets; i++) {
+    for (int i = 0; i < sets.length; i++) {
       _weightFocusNodes[i].addListener(() {
         if (_weightFocusNodes[i].hasFocus) {
           setState(() {
@@ -55,7 +58,8 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
 
   @override
   void dispose() {
-    for (int i = 0; i < _sets; i++) {
+    _saveData();
+    for (int i = 0; i < _weightControllers.length; i++) {
       _weightControllers[i].dispose();
       _repsControllers[i].dispose();
       _weightFocusNodes[i].dispose();
@@ -64,15 +68,22 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
     super.dispose();
   }
 
+  void _saveData() {
+    for (int i = 0; i < widget.exercise.sets.length; i++) {
+      widget.exercise.sets[i].weight = _weightControllers[i].text;
+      widget.exercise.sets[i].reps = _repsControllers[i].text;
+    }
+  }
+
   void _addSet() {
     setState(() {
-      _sets++;
+      widget.exercise.sets.add(SetData());
       _weightControllers.add(TextEditingController());
       _repsControllers.add(TextEditingController());
       _weightFocusNodes.add(FocusNode());
       _repsFocusNodes.add(FocusNode());
 
-      final newIndex = _sets - 1;
+      final newIndex = widget.exercise.sets.length - 1;
       _weightFocusNodes[newIndex].addListener(() {
         if (_weightFocusNodes[newIndex].hasFocus) {
           setState(() {
@@ -91,22 +102,22 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
   }
 
   void _removeSet() {
-    if (_sets > 1) {
+    if (widget.exercise.sets.length > 1) {
       setState(() {
-        _sets--;
+        widget.exercise.sets.removeLast();
         _weightControllers.removeLast().dispose();
         _repsControllers.removeLast().dispose();
         _weightFocusNodes.removeLast().dispose();
         _repsFocusNodes.removeLast().dispose();
-        if (_lastFocusedSet >= _sets) {
-          _lastFocusedSet = _sets - 1;
+        if (_lastFocusedSet >= widget.exercise.sets.length) {
+          _lastFocusedSet = widget.exercise.sets.length - 1;
         }
       });
     }
   }
 
   void _logSet() {
-    if (_lastFocusedSet < _sets - 1) {
+    if (_lastFocusedSet < widget.exercise.sets.length - 1) {
       final weight = _weightControllers[_lastFocusedSet].text;
       final reps = _repsControllers[_lastFocusedSet].text;
 
@@ -119,14 +130,20 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = 'https://placehold.co/400x200.png?text=${widget.exerciseName}';
-    final isLastSetFocused = _lastFocusedSet == _sets - 1;
+    final imageUrl = 'https://placehold.co/400x200.png?text=${widget.exercise.name}';
+    final isLastSetFocused = _lastFocusedSet == widget.exercise.sets.length - 1;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.exerciseName, style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
+        leading: BackButton(
+          onPressed: () {
+            _saveData();
+            Navigator.pop(context);
+          },
+        ),
       ),
       body: Column(
         children: [
@@ -138,13 +155,13 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Text(
-              widget.exerciseName,
+              widget.exercise.name,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
           Expanded(
             child: ListView.builder(
-              itemCount: _sets,
+              itemCount: widget.exercise.sets.length,
               itemBuilder: (context, index) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -173,6 +190,9 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                             FilteringTextInputFormatter.digitsOnly,
                             LengthLimitingTextInputFormatter(3),
                           ],
+                          onSubmitted: (_) {
+                            FocusScope.of(context).requestFocus(_repsFocusNodes[index]);
+                          },
                         ),
                       ),
                       const SizedBox(width: 8.0),
@@ -197,6 +217,14 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                             FilteringTextInputFormatter.digitsOnly,
                             LengthLimitingTextInputFormatter(2),
                           ],
+                          onSubmitted: (_) {
+                            _saveData(); // Save current data
+                            if (index == widget.exercise.sets.length - 1) {
+                              Navigator.pop(context); // Finish exercise
+                            } else {
+                              _logSet(); // Log set and move to next
+                            }
+                          },
                         ),
                       ),
                     ],
@@ -235,7 +263,14 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton(
-              onPressed: isLastSetFocused ? () => Navigator.pop(context) : _logSet,
+              onPressed: () {
+                _saveData();
+                if (isLastSetFocused) {
+                  Navigator.pop(context);
+                } else {
+                  _logSet();
+                }
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
