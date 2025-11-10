@@ -48,9 +48,9 @@ class _StopwatchModalState extends State<StopwatchModal> {
           Text(
             _formatTime(_stopwatch.elapsedMilliseconds),
             style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
           const SizedBox(height: 20),
           ElevatedButton(

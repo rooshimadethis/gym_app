@@ -7,10 +7,7 @@ import 'package:gym_app/stopwatch_modal.dart';
 class ExerciseDetailView extends StatefulWidget {
   final Exercise exercise;
 
-  const ExerciseDetailView({
-    super.key,
-    required this.exercise,
-  });
+  const ExerciseDetailView({super.key, required this.exercise});
 
   @override
   State<ExerciseDetailView> createState() => _ExerciseDetailViewState();
@@ -32,10 +29,14 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
 
   void _initializeControllersAndFocusNodes() {
     final sets = widget.exercise.sets;
-    _weightControllers =
-        List.generate(sets.length, (i) => TextEditingController(text: sets[i].weight));
-    _repsControllers =
-        List.generate(sets.length, (i) => TextEditingController(text: sets[i].reps));
+    _weightControllers = List.generate(
+      sets.length,
+      (i) => TextEditingController(text: sets[i].weight),
+    );
+    _repsControllers = List.generate(
+      sets.length,
+      (i) => TextEditingController(text: sets[i].reps),
+    );
     _weightFocusNodes = List.generate(sets.length, (i) => FocusNode());
     _repsFocusNodes = List.generate(sets.length, (i) => FocusNode());
 
@@ -151,14 +152,17 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
 
   @override
   Widget build(BuildContext context) {
-    final placeHolderImageUrl = 'https://placehold.co/400x200.png?text=${Uri.encodeComponent(widget.exercise.name)}';
+    final placeHolderImageUrl =
+        'https://placehold.co/400x200.png?text=${Uri.encodeComponent(widget.exercise.name)}';
     final isLastSetFocused = _lastFocusedSet == widget.exercise.sets.length - 1;
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
+        iconTheme: IconThemeData(
+          color: Theme.of(context).colorScheme.onPrimary,
+        ),
         leading: BackButton(
           onPressed: () {
             HapticFeedback.lightImpact();
@@ -173,30 +177,47 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  widget.exercise.hasLocalImage && widget.exercise.imageUrl != null
-                      ? Image.asset(
-                          widget.exercise.imageUrl!,
-                          fit: BoxFit.cover,
-                        )
-                      : CachedNetworkImage(
-                          imageUrl: placeHolderImageUrl,
-                          placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                          errorWidget: (context, url, error) => const Icon(Icons.error),
-                        ),
+                  Hero(
+                    tag: '${widget.exercise.name}_image_hero',
+                    child:
+                        widget.exercise.hasLocalImage &&
+                            widget.exercise.imageUrl != null
+                        ? Image.asset(
+                            widget.exercise.imageUrl!,
+                            fit: BoxFit.cover,
+                          )
+                        : CachedNetworkImage(
+                            imageUrl: placeHolderImageUrl,
+                            placeholder: (context, url) => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                            errorWidget: (context, url, error) =>
+                                const Icon(Icons.error),
+                          ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      widget.exercise.name,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                    child: Hero(
+                      tag: '${widget.exercise.name}_text_hero',
+                      child: Text(
+                        widget.exercise.name,
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   ListView.builder(
-                    shrinkWrap: true, // Important: make ListView take only needed space
-                    physics: const NeverScrollableScrollPhysics(), // Disable its own scrolling
+                    shrinkWrap:
+                        true, // Important: make ListView take only needed space
+                    physics:
+                        const NeverScrollableScrollPhysics(), // Disable its own scrolling
                     itemCount: widget.exercise.sets.length,
                     itemBuilder: (context, index) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 8.0,
+                        ),
                         child: Row(
                           children: [
                             SizedBox(
@@ -214,7 +235,11 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                                   labelText: 'Weight',
                                   border: OutlineInputBorder(),
                                   focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                                    borderSide: BorderSide(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
                                   ),
                                 ),
                                 keyboardType: TextInputType.number,
@@ -223,7 +248,9 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                                   LengthLimitingTextInputFormatter(3),
                                 ],
                                 onSubmitted: (_) {
-                                  FocusScope.of(context).requestFocus(_repsFocusNodes[index]);
+                                  FocusScope.of(
+                                    context,
+                                  ).requestFocus(_repsFocusNodes[index]);
                                 },
                               ),
                             ),
@@ -241,7 +268,11 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                                   labelText: 'Reps',
                                   border: OutlineInputBorder(),
                                   focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                                    borderSide: BorderSide(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
                                   ),
                                 ),
                                 keyboardType: TextInputType.number,
@@ -252,7 +283,8 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                                 onSubmitted: (_) {
                                   HapticFeedback.mediumImpact();
                                   _saveData(); // Save current data
-                                  if (index == widget.exercise.sets.length - 1) {
+                                  if (index ==
+                                      widget.exercise.sets.length - 1) {
                                     Navigator.pop(context); // Finish exercise
                                   } else {
                                     _logSet(); // Log set and move to next
@@ -270,7 +302,10 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

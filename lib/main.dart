@@ -29,7 +29,6 @@ class MyApp extends StatelessWidget {
           onError: Colors.white,
           surface: Color(0xFFFAFAFA),
           onSurface: Color(0xFF212121),
-
         ),
         useMaterial3: true,
       ),
@@ -45,7 +44,6 @@ class MyApp extends StatelessWidget {
           onError: Colors.white,
           surface: Color(0xFF121212),
           onSurface: Colors.white,
-
         ),
         useMaterial3: true,
       ),
@@ -68,8 +66,6 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Exercise> _allExercises = [];
   List<Exercise> _filteredExercises = [];
   final TextEditingController _searchController = TextEditingController();
-
-
 
   final Map<String, String> _exerciseImageMap = {
     'Chest Press': 'assets/images/exercises/chest-press.webp',
@@ -135,8 +131,9 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     } else {
       final exercisesList = jsonDecode(exercisesJson) as List;
-      _allExercises =
-          exercisesList.map((json) => Exercise.fromJson(json)).toList();
+      _allExercises = exercisesList
+          .map((json) => Exercise.fromJson(json))
+          .toList();
       // Re-check asset existence for loaded exercises in case assets changed
       for (var exercise in _allExercises) {
         final assetPath = _exerciseImageMap[exercise.name];
@@ -153,8 +150,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _saveExercises() async {
     final prefs = await SharedPreferences.getInstance();
-    final exercisesJson =
-        jsonEncode(_allExercises.map((e) => e.toJson()).toList());
+    final exercisesJson = jsonEncode(
+      _allExercises.map((e) => e.toJson()).toList(),
+    );
     await prefs.setString('exercises_data', exercisesJson);
   }
 
@@ -200,7 +198,9 @@ class _MyHomePageState extends State<MyHomePage> {
                     final newExercise = Exercise(name: newExerciseName);
                     final assetPath = _exerciseImageMap[newExercise.name];
                     if (assetPath != null) {
-                      newExercise.hasLocalImage = await _checkAssetExists(assetPath);
+                      newExercise.hasLocalImage = await _checkAssetExists(
+                        assetPath,
+                      );
                       if (newExercise.hasLocalImage) {
                         newExercise.imageUrl = assetPath;
                       }
@@ -223,13 +223,17 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        title: Text(widget.title,
-            style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
+        backgroundColor: Colors.black,
+        title: Text(
+          widget.title,
+          style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+        ),
         actions: [
           IconButton(
-            icon:
-                Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary),
+            icon: Icon(
+              Icons.add,
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
             onPressed: _showAddExerciseDialog,
           ),
         ],
@@ -244,8 +248,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 labelText: 'Search',
                 border: OutlineInputBorder(),
                 focusedBorder: OutlineInputBorder(
-                  borderSide:
-                      BorderSide(color: Theme.of(context).colorScheme.primary),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
               ),
             ),
@@ -255,15 +260,16 @@ class _MyHomePageState extends State<MyHomePage> {
               itemCount: _filteredExercises.length,
               itemBuilder: (context, index) {
                 final exercise = _filteredExercises[index];
-                final placeHolderImageUrl = 'https://placehold.co/400x200.png?text=${Uri.encodeComponent(exercise.name)}';
+                final placeHolderImageUrl =
+                    'https://placehold.co/400x200.png?text=${Uri.encodeComponent(exercise.name)}';
                 return InkWell(
-                                          onTap: () async {
-                                            HapticFeedback.lightImpact();
-                                            await Navigator.push(                      context,
+                  onTap: () async {
+                    HapticFeedback.lightImpact();
+                    await Navigator.push(
+                      context,
                       MaterialPageRoute(
-                        builder: (context) => ExerciseDetailView(
-                          exercise: exercise,
-                        ),
+                        builder: (context) =>
+                            ExerciseDetailView(exercise: exercise),
                       ),
                     );
                     _saveExercises();
@@ -283,29 +289,40 @@ class _MyHomePageState extends State<MyHomePage> {
                       child: Column(
                         children: [
                           Expanded(
-                            child: exercise.hasLocalImage && exercise.imageUrl != null
-                                ? Image.asset(
-                                    exercise.imageUrl!,
-                                    fit: BoxFit.cover,
-                                  )
-                                : CachedNetworkImage(
-                                    imageUrl: placeHolderImageUrl,
-                                    placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                                    errorWidget: (context, url, error) => const Icon(Icons.error),
-                                  ),
+                            child: Hero(
+                              tag: '${exercise.name}_image_hero',
+                              child:
+                                  exercise.hasLocalImage &&
+                                      exercise.imageUrl != null
+                                  ? Image.asset(
+                                      exercise.imageUrl!,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : CachedNetworkImage(
+                                      imageUrl: placeHolderImageUrl,
+                                      placeholder: (context, url) =>
+                                          const Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                      errorWidget: (context, url, error) =>
+                                          const Icon(Icons.error),
+                                    ),
+                            ),
                           ),
                           Padding(
                             padding: const EdgeInsets.all(16.0),
-                            child: Text(
-                              exercise.name,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineSmall
-                                  ?.copyWith(
+                            child: Hero(
+                              tag: '${exercise.name}_text_hero',
+                              child: Text(
+                                exercise.name,
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(
                                       fontWeight: FontWeight.bold,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onPrimary),
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimary,
+                                    ),
+                              ),
                             ),
                           ),
                         ],
@@ -327,8 +344,9 @@ class _MyHomePageState extends State<MyHomePage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Delete Exercise'),
-          content:
-              Text('Are you sure you want to delete "${exerciseToDelete.name}"?'),
+          content: Text(
+            'Are you sure you want to delete "${exerciseToDelete.name}"?',
+          ),
           actions: <Widget>[
             TextButton(
               child: const Text('Cancel'),
