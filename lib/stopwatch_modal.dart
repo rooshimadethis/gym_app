@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:gym_app/stopwatch_task_handler.dart';
 
 class StopwatchModal extends StatefulWidget {
   const StopwatchModal({super.key});
@@ -20,13 +22,28 @@ class _StopwatchModalState extends State<StopwatchModal> {
     _stopwatch.start();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {});
+      FlutterForegroundTask.sendDataToTask({
+        'elapsedMilliseconds': _stopwatch.elapsedMilliseconds,
+      });
     });
+
+    _startForegroundService();
+  }
+
+  Future<void> _startForegroundService() async {
+    await FlutterForegroundTask.startService(
+      serviceId: 123, // Unique ID for your service
+      notificationTitle: 'Rest Timer',
+      notificationText: 'Elapsed: ${_formatTime(_stopwatch.elapsedMilliseconds)}',
+      callback: startStopwatchCallback,
+    );
   }
 
   @override
   void dispose() {
     _timer.cancel();
     _stopwatch.stop();
+    FlutterForegroundTask.stopService();
     super.dispose();
   }
 

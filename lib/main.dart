@@ -7,6 +7,12 @@ import 'package:gym_app/exercise_detail_view.dart';
 import 'package:gym_app/models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:gym_app/stopwatch_task_handler.dart';
+
+@pragma('vm:entry-point')
+void startStopwatchCallback() {
+  FlutterForegroundTask.setTaskHandler(StopwatchTaskHandler());
+}
 
 void main() {
   FlutterForegroundTask.initCommunicationPort();
