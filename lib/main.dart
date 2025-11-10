@@ -72,12 +72,55 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
+  Future<void> _showAddExerciseDialog() async {
+    final TextEditingController newExerciseController = TextEditingController();
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Add New Exercise'),
+          content: TextField(
+            controller: newExerciseController,
+            decoration: const InputDecoration(hintText: "Exercise Name"),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Add'),
+              onPressed: () {
+                final newExercise = newExerciseController.text;
+                if (newExercise.isNotEmpty) {
+                  setState(() {
+                    _allExercises.add(newExercise);
+                    filterExercises();
+                  });
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: Text(widget.title, style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary),
+            onPressed: _showAddExerciseDialog,
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -111,6 +154,9 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     );
                   },
+                  onLongPress: () {
+                    _showDeleteExerciseDialog(exercise);
+                  },
                   child: Card(
                     elevation: 4,
                     shape: RoundedRectangleBorder(
@@ -140,6 +186,36 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showDeleteExerciseDialog(String exerciseToDelete) async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Exercise'),
+          content: Text('Are you sure you want to delete "$exerciseToDelete"?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Delete'),
+              onPressed: () {
+                setState(() {
+                  _allExercises.remove(exerciseToDelete);
+                  filterExercises();
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }

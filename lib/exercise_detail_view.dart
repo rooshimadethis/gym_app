@@ -120,6 +120,8 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
   @override
   Widget build(BuildContext context) {
     final imageUrl = 'https://placehold.co/400x200.png?text=${widget.exerciseName}';
+    final isLastSetFocused = _lastFocusedSet == _sets - 1;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.exerciseName, style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
@@ -233,13 +235,13 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton(
-              onPressed: _logSet,
+              onPressed: isLastSetFocused ? () => Navigator.pop(context) : _logSet,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 minimumSize: const Size(double.infinity, 50),
               ),
-              child: const Text('Log Set'),
+              child: Text(isLastSetFocused ? 'Finish Exercise' : 'Log Set'),
             ),
           ),
         ],
