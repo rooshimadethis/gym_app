@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:gym_app/exercise_detail_view.dart';
@@ -257,9 +257,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 final exercise = _filteredExercises[index];
                 final placeHolderImageUrl = 'https://placehold.co/400x200.png?text=${Uri.encodeComponent(exercise.name)}';
                 return InkWell(
-                  onTap: () async {
-                    await Navigator.push(
-                      context,
+                                          onTap: () async {
+                                            HapticFeedback.lightImpact();
+                                            await Navigator.push(                      context,
                       MaterialPageRoute(
                         builder: (context) => ExerciseDetailView(
                           exercise: exercise,

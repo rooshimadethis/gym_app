@@ -77,6 +77,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
   }
 
   void _addSet() {
+    HapticFeedback.lightImpact();
     setState(() {
       widget.exercise.sets.add(SetData());
       _weightControllers.add(TextEditingController());
@@ -103,6 +104,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
   }
 
   void _removeSet() {
+    HapticFeedback.lightImpact();
     if (widget.exercise.sets.length > 1) {
       setState(() {
         widget.exercise.sets.removeLast();
@@ -149,6 +151,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
         iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
         leading: BackButton(
           onPressed: () {
+            HapticFeedback.lightImpact();
             _saveData();
             Navigator.pop(context);
           },
@@ -232,6 +235,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                             LengthLimitingTextInputFormatter(2),
                           ],
                           onSubmitted: (_) {
+                            HapticFeedback.mediumImpact();
                             _saveData(); // Save current data
                             if (index == widget.exercise.sets.length - 1) {
                               Navigator.pop(context); // Finish exercise
@@ -278,6 +282,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton(
               onPressed: () {
+                HapticFeedback.mediumImpact();
                 _saveData();
                 if (isLastSetFocused) {
                   Navigator.pop(context);

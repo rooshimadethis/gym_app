@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class StopwatchModal extends StatefulWidget {
   const StopwatchModal({super.key});
@@ -54,6 +55,7 @@ class _StopwatchModalState extends State<StopwatchModal> {
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () {
+              HapticFeedback.mediumImpact();
               Navigator.of(context).pop(); // Close the modal
             },
             style: ElevatedButton.styleFrom(
