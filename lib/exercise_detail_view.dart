@@ -139,7 +139,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = 'https://placehold.co/400x200.png?text=${widget.exercise.name}';
+    final placeHolderImageUrl = 'https://placehold.co/400x200.png?text=${Uri.encodeComponent(widget.exercise.name)}';
     final isLastSetFocused = _lastFocusedSet == widget.exercise.sets.length - 1;
 
     return Scaffold(
@@ -156,11 +156,16 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
       ),
       body: Column(
         children: [
-          CachedNetworkImage(
-            imageUrl: imageUrl,
-            placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-            errorWidget: (context, url, error) => const Icon(Icons.error),
-          ),
+          widget.exercise.hasLocalImage && widget.exercise.imageUrl != null
+              ? Image.asset(
+                  widget.exercise.imageUrl!,
+                  fit: BoxFit.cover,
+                )
+              : CachedNetworkImage(
+                  imageUrl: placeHolderImageUrl,
+                  placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                  errorWidget: (context, url, error) => const Icon(Icons.error),
+                ),
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Text(

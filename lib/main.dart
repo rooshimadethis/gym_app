@@ -1,5 +1,5 @@
 import 'dart:convert';
-
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:gym_app/exercise_detail_view.dart';
@@ -71,6 +71,31 @@ class _MyHomePageState extends State<MyHomePage> {
 
   static const double _kTabletBreakpoint = 600.0;
 
+  final Map<String, String> _exerciseImageMap = {
+    'Chest Press': 'assets/images/exercises/chest-press.webp',
+    'Lat Pull Down': 'assets/images/exercises/lat-pulldown.webp',
+    'Cable Row': 'assets/images/exercises/cable-row.webp',
+    'Leg Press': 'assets/images/exercises/leg-press.webp',
+    'Calf Raise': 'assets/images/exercises/calf-raise.webp',
+    'Hamstring Curl': 'assets/images/exercises/hamstring-curl.webp',
+    'Dumbbell Lateral Raise': 'assets/images/exercises/lateral-raise.webp',
+    'Dumbbell Shoulder Press': 'assets/images/exercises/shoulder-press.webp',
+    'Tricep Pushdown': 'assets/images/exercises/tricep-pushdown.webp',
+    'Bicep Curl': 'assets/images/exercises/bicep-curl.webp',
+    'Wrist Curls': 'assets/images/exercises/wrist-curl.webp',
+    'Cable Shrug': 'assets/images/exercises/cable-shrug.webp',
+    'Deadlift': 'assets/images/exercises/deadlift.webp',
+  };
+
+  Future<bool> _checkAssetExists(String assetPath) async {
+    try {
+      await rootBundle.load(assetPath);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -94,15 +119,34 @@ class _MyHomePageState extends State<MyHomePage> {
         Exercise(name: 'Dumbbell Lateral Raise'),
         Exercise(name: 'Dumbbell Shoulder Press'),
         Exercise(name: 'Tricep Pushdown'),
-        Exercise(name: 'Bicep Curl Machine'),
+        Exercise(name: 'Bicep Curl'),
         Exercise(name: 'Wrist Curls'),
         Exercise(name: 'Cable Shrug'),
         Exercise(name: 'Deadlift'),
       ];
+      for (var exercise in _allExercises) {
+        final assetPath = _exerciseImageMap[exercise.name];
+        if (assetPath != null) {
+          exercise.hasLocalImage = await _checkAssetExists(assetPath);
+          if (exercise.hasLocalImage) {
+            exercise.imageUrl = assetPath;
+          }
+        }
+      }
     } else {
       final exercisesList = jsonDecode(exercisesJson) as List;
       _allExercises =
           exercisesList.map((json) => Exercise.fromJson(json)).toList();
+      // Re-check asset existence for loaded exercises in case assets changed
+      for (var exercise in _allExercises) {
+        final assetPath = _exerciseImageMap[exercise.name];
+        if (assetPath != null) {
+          exercise.hasLocalImage = await _checkAssetExists(assetPath);
+          if (exercise.hasLocalImage) {
+            exercise.imageUrl = assetPath;
+          }
+        }
+      }
     }
     filterExercises();
   }
@@ -152,8 +196,16 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () {
                 final newExerciseName = newExerciseController.text;
                 if (newExerciseName.isNotEmpty) {
-                  setState(() {
-                    _allExercises.add(Exercise(name: newExerciseName));
+                  setState(() async {
+                    final newExercise = Exercise(name: newExerciseName);
+                    final assetPath = _exerciseImageMap[newExercise.name];
+                    if (assetPath != null) {
+                      newExercise.hasLocalImage = await _checkAssetExists(assetPath);
+                      if (newExercise.hasLocalImage) {
+                        newExercise.imageUrl = assetPath;
+                      }
+                    }
+                    _allExercises.add(newExercise);
                     filterExercises();
                     _saveExercises();
                   });
@@ -212,8 +264,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     itemCount: _filteredExercises.length,
                     itemBuilder: (context, index) {
                       final exercise = _filteredExercises[index];
-                      final imageUrl =
-                          'https://placehold.co/400x100.png?text=${exercise.name}';
+                      final placeHolderImageUrl = 'https://placehold.co/400x200.png?text=${Uri.encodeComponent(exercise.name)}';
                       return InkWell(
                         onTap: () async {
                           await Navigator.push(
@@ -238,13 +289,16 @@ class _MyHomePageState extends State<MyHomePage> {
                           clipBehavior: Clip.antiAlias,
                           child: Column(
                             children: [
-                              CachedNetworkImage(
-                                imageUrl: imageUrl,
-                                placeholder: (context, url) =>
-                                    const Center(child: CircularProgressIndicator()),
-                                errorWidget: (context, url, error) =>
-                                    const Icon(Icons.error),
-                              ),
+                              exercise.hasLocalImage && exercise.imageUrl != null
+                                  ? Image.asset(
+                                      exercise.imageUrl!,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : CachedNetworkImage(
+                                      imageUrl: placeHolderImageUrl,
+                                      placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                                      errorWidget: (context, url, error) => const Icon(Icons.error),
+                                    ),
                               Padding(
                                 padding: const EdgeInsets.all(16.0),
                                 child: Text(
@@ -270,8 +324,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     itemCount: _filteredExercises.length,
                     itemBuilder: (context, index) {
                       final exercise = _filteredExercises[index];
-                      final imageUrl =
-                          'https://placehold.co/400x100.png?text=${exercise.name}';
+                      final placeHolderImageUrl = 'https://placehold.co/400x200.png?text=${Uri.encodeComponent(exercise.name)}';
                       return InkWell(
                         onTap: () async {
                           await Navigator.push(
@@ -296,13 +349,16 @@ class _MyHomePageState extends State<MyHomePage> {
                           clipBehavior: Clip.antiAlias,
                           child: Column(
                             children: [
-                              CachedNetworkImage(
-                                imageUrl: imageUrl,
-                                placeholder: (context, url) =>
-                                    const Center(child: CircularProgressIndicator()),
-                                errorWidget: (context, url, error) =>
-                                    const Icon(Icons.error),
-                              ),
+                              exercise.hasLocalImage && exercise.imageUrl != null
+                                  ? Image.asset(
+                                      exercise.imageUrl!,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : CachedNetworkImage(
+                                      imageUrl: placeHolderImageUrl,
+                                      placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                                      errorWidget: (context, url, error) => const Icon(Icons.error),
+                                    ),
                               Padding(
                                 padding: const EdgeInsets.all(16.0),
                                 child: Text(
