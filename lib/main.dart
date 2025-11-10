@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:gym_app/exercise_detail_view.dart';
 
@@ -98,7 +99,7 @@ class _MyHomePageState extends State<MyHomePage> {
               itemCount: _filteredExercises.length,
               itemBuilder: (context, index) {
                 final exercise = _filteredExercises[index];
-                final imageUrl = 'https://picsum.photos/seed/$exercise/400/200';
+                final imageUrl = 'https://placehold.co/400x200.png?text=$exercise';
                 return InkWell(
                   onTap: () {
                     Navigator.push(
@@ -118,7 +119,11 @@ class _MyHomePageState extends State<MyHomePage> {
                     clipBehavior: Clip.antiAlias,
                     child: Column(
                       children: [
-                        Image.network(imageUrl),
+                        CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                          errorWidget: (context, url, error) => const Icon(Icons.error),
+                        ),
                         Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Text(
