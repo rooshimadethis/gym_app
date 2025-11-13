@@ -306,7 +306,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         borderRadius: BorderRadius.circular(15.0),
                       ),
                       closedElevation: 0.0,
-                      transitionDuration: const Duration(milliseconds: 200),
+                      transitionDuration: const Duration(milliseconds: 300),
                       openBuilder: (context, action) {
                         return ExerciseDetailView(exercise: exercise);
                       },
