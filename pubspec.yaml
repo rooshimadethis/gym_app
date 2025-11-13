@@ -92,5 +92,5 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icon/forklift.png"
-  adaptive_icon_background: "#F57C00"
+  adaptive_icon_background: "#4C763B"
   adaptive_icon_foreground: "assets/icon/forklift.png"

@@ -33,9 +33,9 @@ class MyApp extends StatelessWidget {
         fontFamily: 'StackSansText',
         colorScheme: const ColorScheme(
           brightness: Brightness.light,
-          primary: Color(0xFFF57C00),
+          primary: Color(0xFF4C763B),
           onPrimary: Colors.white,
-          secondary: Color(0xFFFFB74D),
+          secondary: Color(0xFF77A26D),
           onSecondary: Color(0xFF212121),
           error: Colors.red,
           onError: Colors.white,
@@ -48,9 +48,9 @@ class MyApp extends StatelessWidget {
         fontFamily: 'StackSansText',
         colorScheme: const ColorScheme(
           brightness: Brightness.dark,
-          primary: Color(0xFFF57C00),
+          primary: Color(0xFF4C763B),
           onPrimary: Colors.white,
-          secondary: Color(0xFFFFB74D),
+          secondary: Color(0xFF77A26D),
           onSecondary: Color(0xFF212121),
           error: Colors.red,
           onError: Colors.white,
