@@ -8,6 +8,7 @@ TODO:
 [] import/export exercise data. Just in case sharedprefs doesn't work. Also Android<->iOS before database
 [] must click finish rest to close
 [] after doing an exercise, move it to the bottom
+[] back after search clears?
 [x] Save info between installs, bc I'm gonna be updating this app
     - It's not gonna be usable for me personally until then
     - did fragileuserdata, lets see how well it works
