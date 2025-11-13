@@ -190,6 +190,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
     // Show the stopwatch modal after logging the set
     showDialog(
       context: context,
+      barrierDismissible: false, // User must tap button to close
       builder: (BuildContext context) {
         return const StopwatchModal();
       },
