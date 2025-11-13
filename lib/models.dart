@@ -34,8 +34,10 @@ class Exercise {
     name: json['name'],
     imageUrl: json['imageUrl'],
     hasLocalImage: json['hasLocalImage'] ?? false,
-    sets: (json['sets'] as List)
-        .map((setJson) => SetData.fromJson(setJson))
-        .toList(),
+    sets:
+        (json['sets'] as List?)
+            ?.map((setJson) => SetData.fromJson(setJson))
+            .toList() ??
+        [],
   );
 }

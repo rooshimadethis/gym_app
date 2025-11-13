@@ -37,7 +37,8 @@ class _StopwatchModalState extends State<StopwatchModal> {
     await FlutterForegroundTask.startService(
       serviceId: 123, // Unique ID for your service
       notificationTitle: 'Rest Timer',
-      notificationText: 'Elapsed: ${_formatTime(_stopwatch.elapsedMilliseconds)}',
+      notificationText:
+          'Elapsed: ${_formatTime(_stopwatch.elapsedMilliseconds)}',
       callback: startStopwatchCallback,
     );
   }

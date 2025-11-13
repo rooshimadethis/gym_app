@@ -1,5 +1,6 @@
+import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'dart:convert';
-import 'dart:io';
+import 'package:animations/animations.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +15,9 @@ void startStopwatchCallback() {
   FlutterForegroundTask.setTaskHandler(StopwatchTaskHandler());
 }
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await FlutterDisplayMode.setHighRefreshRate();
   FlutterForegroundTask.initCommunicationPort();
   runApp(const MyApp());
 }
@@ -174,6 +177,25 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  bool _imagesPrecached = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_imagesPrecached) {
+      _precacheImages();
+      _imagesPrecached = true;
+    }
+  }
+
+  Future<void> _precacheImages() async {
+    for (var exercise in _allExercises) {
+      if (exercise.hasLocalImage && exercise.imageUrl != null) {
+        await precacheImage(AssetImage(exercise.imageUrl!), context);
+      }
+    }
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -271,71 +293,88 @@ class _MyHomePageState extends State<MyHomePage> {
                 final exercise = _filteredExercises[index];
                 final placeHolderImageUrl =
                     'https://placehold.co/400x200.png?text=${Uri.encodeComponent(exercise.name)}';
-                return InkWell(
-                  onTap: () async {
-                    HapticFeedback.lightImpact();
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ExerciseDetailView(exercise: exercise),
-                      ),
-                    );
-                    _saveExercises();
-                  },
-                  onLongPress: () {
-                    _showDeleteExerciseDialog(exercise);
-                  },
-                  child: SizedBox(
-                    height: 150.0, // Fixed height for ListView cards
-                    child: Card(
-                      elevation: 10.0,
-                      color: Theme.of(context).colorScheme.primary,
-                      shape: RoundedRectangleBorder(
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: GestureDetector(
+                    onLongPress: () {
+                      _showDeleteExerciseDialog(exercise);
+                    },
+                    child: OpenContainer(
+                      tappable: false,
+                      closedColor: Theme.of(context).colorScheme.primary,
+                      closedShape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15.0),
                       ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: Hero(
-                              tag: '${exercise.name}_image_hero',
-                              child:
-                                  exercise.hasLocalImage &&
-                                      exercise.imageUrl != null
-                                  ? Image.asset(
-                                      exercise.imageUrl!,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : CachedNetworkImage(
-                                      imageUrl: placeHolderImageUrl,
-                                      placeholder: (context, url) =>
-                                          const Center(
-                                            child: CircularProgressIndicator(),
+                      closedElevation: 0.0,
+                      transitionDuration: const Duration(milliseconds: 200),
+                      openBuilder: (context, action) {
+                        return ExerciseDetailView(exercise: exercise);
+                      },
+                      onClosed: (_) => _saveExercises(),
+                      closedBuilder: (context, action) {
+                        return GestureDetector(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            action();
+                          },
+                          child: AspectRatio(
+                            aspectRatio:
+                                2 /
+                                1, // Changed to 2:1 aspect ratio for shorter cards
+                            child: Card(
+                              elevation: 0,
+                              color: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15.0),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: Column(
+                                children: [
+                                  Expanded(
+                                    child:
+                                        exercise.hasLocalImage &&
+                                            exercise.imageUrl != null
+                                        ? Image.asset(
+                                            exercise.imageUrl!,
+                                            fit: BoxFit
+                                                .contain, // Changed to contain
+                                            width: double.infinity,
+                                          )
+                                        : CachedNetworkImage(
+                                            imageUrl: placeHolderImageUrl,
+                                            fit: BoxFit
+                                                .contain, // Changed to contain
+                                            width: double.infinity,
+                                            placeholder: (context, url) =>
+                                                Container(
+                                                  color: Colors.grey[300],
+                                                ),
+                                            errorWidget:
+                                                (context, url, error) =>
+                                                    const Icon(Icons.error),
                                           ),
-                                      errorWidget: (context, url, error) =>
-                                          const Icon(Icons.error),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Text(
+                                      exercise.name,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimary,
+                                          ),
                                     ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Hero(
-                              tag: '${exercise.name}_text_hero',
-                              child: Text(
-                                exercise.name,
-                                style: Theme.of(context).textTheme.headlineSmall
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onPrimary,
-                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   ),
                 );

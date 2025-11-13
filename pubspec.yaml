@@ -37,6 +37,8 @@ dependencies:
   cached_network_image: ^3.4.1
   shared_preferences: ^2.5.3
   flutter_foreground_task: ^9.1.0
+  animations: ^2.1.0
+  flutter_displaymode: ^0.7.0
 
 dev_dependencies:
   flutter_test:

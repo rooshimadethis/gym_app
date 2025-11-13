@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:gym_app/models.dart';
 import 'package:gym_app/stopwatch_modal.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:gym_app/stopwatch_task_handler.dart';
 import 'dart:io';
 
 class ExerciseDetailView extends StatefulWidget {
@@ -221,131 +220,122 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
       body: Column(
         children: [
           Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  Hero(
-                    tag: '${widget.exercise.name}_image_hero',
-                    child:
-                        widget.exercise.hasLocalImage &&
-                            widget.exercise.imageUrl != null
-                        ? Image.asset(
-                            widget.exercise.imageUrl!,
-                            fit: BoxFit.cover,
-                          )
-                        : CachedNetworkImage(
-                            imageUrl: placeHolderImageUrl,
-                            placeholder: (context, url) => const Center(
-                              child: CircularProgressIndicator(),
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      widget.exercise.hasLocalImage &&
+                              widget.exercise.imageUrl != null
+                          ? Image.asset(
+                              widget.exercise.imageUrl!,
+                              fit: BoxFit.cover,
+                            )
+                          : CachedNetworkImage(
+                              imageUrl: placeHolderImageUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) =>
+                                  Container(color: Colors.grey[300]),
+                              errorWidget: (context, url, error) =>
+                                  const Icon(Icons.error),
                             ),
-                            errorWidget: (context, url, error) =>
-                                const Icon(Icons.error),
-                          ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Hero(
-                      tag: '${widget.exercise.name}_text_hero',
-                      child: Text(
-                        widget.exercise.name,
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                  ListView.builder(
-                    shrinkWrap:
-                        true, // Important: make ListView take only needed space
-                    physics:
-                        const NeverScrollableScrollPhysics(), // Disable its own scrolling
-                    itemCount: widget.exercise.sets.length,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 8.0,
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          widget.exercise.name,
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 30,
-                              child: Text(
-                                '${index + 1}.',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                            ),
-                            Expanded(
-                              child: TextField(
-                                controller: _weightControllers[index],
-                                focusNode: _weightFocusNodes[index],
-                                decoration: InputDecoration(
-                                  labelText: 'Weight',
-                                  border: OutlineInputBorder(),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
-                                  ),
-                                ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                  LengthLimitingTextInputFormatter(3),
-                                ],
-                                onSubmitted: (_) {
-                                  FocusScope.of(
-                                    context,
-                                  ).requestFocus(_repsFocusNodes[index]);
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8.0),
-                            Text(
-                              'x',
+                      ),
+                    ],
+                  ),
+                ),
+                SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0,
+                        vertical: 8.0,
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 30,
+                            child: Text(
+                              '${index + 1}.',
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
-                            const SizedBox(width: 8.0),
-                            Expanded(
-                              child: TextField(
-                                controller: _repsControllers[index],
-                                focusNode: _repsFocusNodes[index],
-                                decoration: InputDecoration(
-                                  labelText: 'Reps',
-                                  border: OutlineInputBorder(),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: _weightControllers[index],
+                              focusNode: _weightFocusNodes[index],
+                              decoration: InputDecoration(
+                                labelText: 'Weight',
+                                border: const OutlineInputBorder(),
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                   ),
                                 ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                  LengthLimitingTextInputFormatter(2),
-                                ],
-                                onSubmitted: (_) {
-                                  HapticFeedback.mediumImpact();
-                                  _saveData(); // Save current data
-                                  if (index ==
-                                      widget.exercise.sets.length - 1) {
-                                    Navigator.pop(context); // Finish exercise
-                                  } else {
-                                    _logSet(); // Log set and move to next
-                                  }
-                                },
                               ),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(3),
+                              ],
+                              onSubmitted: (_) {
+                                FocusScope.of(
+                                  context,
+                                ).requestFocus(_repsFocusNodes[index]);
+                              },
                             ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
+                          ),
+                          const SizedBox(width: 8.0),
+                          Text(
+                            'x',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(width: 8.0),
+                          Expanded(
+                            child: TextField(
+                              controller: _repsControllers[index],
+                              focusNode: _repsFocusNodes[index],
+                              decoration: InputDecoration(
+                                labelText: 'Reps',
+                                border: const OutlineInputBorder(),
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(2),
+                              ],
+                              onSubmitted: (_) {
+                                HapticFeedback.mediumImpact();
+                                _saveData(); // Save current data
+                                if (index == widget.exercise.sets.length - 1) {
+                                  Navigator.pop(context); // Finish exercise
+                                } else {
+                                  _logSet(); // Log set and move to next
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }, childCount: widget.exercise.sets.length),
+                ),
+              ],
             ),
           ),
           Padding(
