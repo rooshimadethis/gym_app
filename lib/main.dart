@@ -252,140 +252,149 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: Text(
-          widget.title,
-          style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.add,
-              color: Theme.of(context).colorScheme.onPrimary,
-            ),
-            onPressed: _showAddExerciseDialog,
+    return WillPopScope(
+      onWillPop: () async {
+        if (_searchController.text.isNotEmpty) {
+          _searchController.clear();
+          filterExercises();
+          return false; // Do not pop the route
+        }
+        return true; // Allow the route to be popped
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          title: Text(
+            widget.title,
+            style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                labelText: 'Search',
-                border: OutlineInputBorder(),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.primary,
+          actions: [
+            IconButton(
+              icon: Icon(
+                Icons.add,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+              onPressed: _showAddExerciseDialog,
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  labelText: 'Search',
+                  border: OutlineInputBorder(),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _filteredExercises.length,
-              itemBuilder: (context, index) {
-                final exercise = _filteredExercises[index];
-                final placeHolderImageUrl =
-                    'https://placehold.co/400x200.png?text=${Uri.encodeComponent(exercise.name)}';
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: GestureDetector(
-                    onLongPress: () {
-                      _showDeleteExerciseDialog(exercise);
-                    },
-                    child: OpenContainer(
-                      tappable: false,
-                      closedColor: Theme.of(context).colorScheme.primary,
-                      closedShape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15.0),
-                      ),
-                      closedElevation: 0.0,
-                      transitionDuration: const Duration(milliseconds: 300),
-                      openBuilder: (context, action) {
-                        return ExerciseDetailView(exercise: exercise);
+            Expanded(
+              child: ListView.builder(
+                itemCount: _filteredExercises.length,
+                itemBuilder: (context, index) {
+                  final exercise = _filteredExercises[index];
+                  final placeHolderImageUrl =
+                      'https://placehold.co/400x200.png?text=${Uri.encodeComponent(exercise.name)}';
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: GestureDetector(
+                      onLongPress: () {
+                        _showDeleteExerciseDialog(exercise);
                       },
-                      onClosed: (_) => _saveExercises(),
-                      closedBuilder: (context, action) {
-                        return GestureDetector(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            action();
-                          },
-                          child: AspectRatio(
-                            aspectRatio:
-                                2 /
-                                1, // Changed to 2:1 aspect ratio for shorter cards
-                            child: Card(
-                              elevation: 0,
-                              color: Colors.transparent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15.0),
-                              ),
-                              clipBehavior: Clip.antiAlias,
-                              child: Column(
-                                children: [
-                                  Expanded(
-                                    child:
-                                        exercise.hasLocalImage &&
-                                            exercise.imageUrl != null
-                                        ? Image.asset(
-                                            exercise.imageUrl!,
-                                            fit: BoxFit
-                                                .contain, // Changed to contain
-                                            width: double.infinity,
-                                          )
-                                        : CachedNetworkImage(
-                                            imageUrl: placeHolderImageUrl,
-                                            fit: BoxFit
-                                                .contain, // Changed to contain
-                                            width: double.infinity,
-                                            placeholder: (context, url) =>
-                                                Container(
-                                                  color: Colors.grey[300],
-                                                ),
-                                            errorWidget:
-                                                (context, url, error) =>
-                                                    const Icon(Icons.error),
-                                          ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: Text(
-                                      exercise.name,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onPrimary,
-                                          ),
+                      child: OpenContainer(
+                        tappable: false,
+                        closedColor: Theme.of(context).colorScheme.primary,
+                        closedShape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15.0),
+                        ),
+                        closedElevation: 0.0,
+                        transitionDuration: const Duration(milliseconds: 300),
+                        openBuilder: (context, action) {
+                          return ExerciseDetailView(exercise: exercise);
+                        },
+                        onClosed: (_) => _saveExercises(),
+                        closedBuilder: (context, action) {
+                          return GestureDetector(
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              action();
+                            },
+                            child: AspectRatio(
+                              aspectRatio:
+                                  2 /
+                                  1, // Changed to 2:1 aspect ratio for shorter cards
+                              child: Card(
+                                elevation: 0,
+                                color: Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15.0),
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child:
+                                          exercise.hasLocalImage &&
+                                              exercise.imageUrl != null
+                                          ? Image.asset(
+                                              exercise.imageUrl!,
+                                              fit: BoxFit
+                                                  .contain, // Changed to contain
+                                              width: double.infinity,
+                                            )
+                                          : CachedNetworkImage(
+                                              imageUrl: placeHolderImageUrl,
+                                              fit: BoxFit
+                                                  .contain, // Changed to contain
+                                              width: double.infinity,
+                                              placeholder: (context, url) =>
+                                                  Container(
+                                                    color: Colors.grey[300],
+                                                  ),
+                                              errorWidget:
+                                                  (context, url, error) =>
+                                                      const Icon(Icons.error),
+                                            ),
                                     ),
-                                  ),
-                                ],
+                                    Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Text(
+                                        exercise.name,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineSmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onPrimary,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
-
   Future<void> _showDeleteExerciseDialog(Exercise exerciseToDelete) async {
     return showDialog<void>(
       context: context,
