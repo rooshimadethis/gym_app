@@ -23,7 +23,7 @@ class SettingsPage extends StatelessWidget {
 
     try {
       Uint8List bytes = utf8.encode(exercisesJson);
-      String? path = await FileSaver.instance.saveFile(
+      String? path = await FileSaver.instance.saveAs(
         name: 'gym_app_export',
         bytes: bytes,
         ext: 'json',
