@@ -7,6 +7,8 @@ This means a list of all exercises will be the main tool available. Towards the 
 TODO:
 [] last set timer
 [] after doing an exercise, move it to the bottom (flash?)
+ - opencontainer is making it hard to do the animation
+ - Make sure order gets saved to sharedprefs
 [] back after search clears? (flash)
 [] remove ignoring of deprecated libraries and try again (sharexfiles)
 [x] import/export exercise data. Just in case sharedprefs doesn't work. Also Android<->iOS before database
@@ -15,4 +17,3 @@ TODO:
     - did fragileuserdata, lets see how well it works
 [x] Count up stopwatch between sets
 [x] must click finish rest to close (flash)
-
