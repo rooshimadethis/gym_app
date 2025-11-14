@@ -9,6 +9,7 @@ TODO:
 [] last set timer
 [] after doing an exercise, move it to the bottom (flash?)
 [] back after search clears? (flash)
+[] remove ignoring of deprecated libraries and try again (sharexfiles)
 [x] Save info between installs, bc I'm gonna be updating this app
     - It's not gonna be usable for me personally until then
     - did fragileuserdata, lets see how well it works

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:gym_app/exercise_detail_view.dart';
 import 'package:gym_app/models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:gym_app/settings_page.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:gym_app/stopwatch_task_handler.dart';
 
@@ -252,14 +253,16 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: _searchController.text.isEmpty,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
         if (_searchController.text.isNotEmpty) {
           _searchController.clear();
           filterExercises();
-          return false; // Do not pop the route
         }
-        return true; // Allow the route to be popped
       },
       child: Scaffold(
         appBar: AppBar(
@@ -269,6 +272,20 @@ class _MyHomePageState extends State<MyHomePage> {
             style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
           ),
           actions: [
+            IconButton(
+              icon: Icon(
+                Icons.settings,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SettingsPage(),
+                  ),
+                );
+              },
+            ),
             IconButton(
               icon: Icon(
                 Icons.add,
