@@ -6,11 +6,12 @@ This means a list of all exercises will be the main tool available. Towards the 
 
 TODO:
 [] import/export exercise data. Just in case sharedprefs doesn't work. Also Android<->iOS before database
-[] must click finish rest to close
-[] after doing an exercise, move it to the bottom
-[] back after search clears?
 [] last set timer
+[] after doing an exercise, move it to the bottom (flash?)
+[] back after search clears? (flash)
 [x] Save info between installs, bc I'm gonna be updating this app
     - It's not gonna be usable for me personally until then
     - did fragileuserdata, lets see how well it works
 [x] Count up stopwatch between sets
+[x] must click finish rest to close (flash)
+
