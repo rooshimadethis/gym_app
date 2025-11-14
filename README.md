@@ -9,6 +9,7 @@ TODO:
 [] must click finish rest to close
 [] after doing an exercise, move it to the bottom
 [] back after search clears?
+[] last set timer
 [x] Save info between installs, bc I'm gonna be updating this app
     - It's not gonna be usable for me personally until then
     - did fragileuserdata, lets see how well it works
