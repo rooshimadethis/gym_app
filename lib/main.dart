@@ -178,6 +178,15 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  void _moveExerciseToBottom(Exercise exercise) {
+    setState(() {
+      _allExercises.remove(exercise);
+      _allExercises.add(exercise);
+      filterExercises();
+    });
+    _saveExercises();
+  }
+
   bool _imagesPrecached = false;
 
   @override
@@ -335,7 +344,11 @@ class _MyHomePageState extends State<MyHomePage> {
                         closedElevation: 0.0,
                         transitionDuration: const Duration(milliseconds: 300),
                         openBuilder: (context, action) {
-                          return ExerciseDetailView(exercise: exercise);
+                          return ExerciseDetailView(
+                            exercise: exercise,
+                            onExerciseCompleted: () =>
+                                _moveExerciseToBottom(exercise),
+                          );
                         },
                         onClosed: (_) => _saveExercises(),
                         closedBuilder: (context, action) {

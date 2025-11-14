@@ -8,8 +8,12 @@ import 'dart:io';
 
 class ExerciseDetailView extends StatefulWidget {
   final Exercise exercise;
+  final VoidCallback onExerciseCompleted;
 
-  const ExerciseDetailView({super.key, required this.exercise});
+  const ExerciseDetailView(
+      {super.key,
+      required this.exercise,
+      required this.onExerciseCompleted});
 
   @override
   State<ExerciseDetailView> createState() => _ExerciseDetailViewState();
@@ -194,7 +198,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
       builder: (BuildContext context) {
         return const StopwatchModal();
       },
-    );
+    ).then((_) => widget.onExerciseCompleted());
   }
 
   @override
@@ -324,6 +328,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                                 HapticFeedback.mediumImpact();
                                 _saveData(); // Save current data
                                 if (index == widget.exercise.sets.length - 1) {
+                                  widget.onExerciseCompleted();
                                   Navigator.pop(context); // Finish exercise
                                 } else {
                                   _logSet(); // Log set and move to next
@@ -376,6 +381,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                 HapticFeedback.mediumImpact();
                 _saveData();
                 if (isLastSetFocused) {
+                  widget.onExerciseCompleted();
                   Navigator.pop(context);
                 } else {
                   _logSet();
