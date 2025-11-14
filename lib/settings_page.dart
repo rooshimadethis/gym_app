@@ -23,8 +23,20 @@ class SettingsPage extends StatelessWidget {
 
     try {
       Uint8List bytes = utf8.encode(exercisesJson);
+
+      final now = DateTime.now();
+      final year = now.year;
+      final month = now.month.toString().padLeft(2, '0');
+      final day = now.day.toString().padLeft(2, '0');
+      final hour = now.hour.toString().padLeft(2, '0');
+      final minute = now.minute.toString().padLeft(2, '0');
+
+      final formattedDate = '$year-$month-$day';
+      final formattedTime = '$hour-$minute';
+      final fileName = 'gym_app_export_${formattedDate}_$formattedTime';
+
       String? path = await FileSaver.instance.saveAs(
-        name: 'gym_app_export',
+        name: fileName,
         bytes: bytes,
         ext: 'json',
         mimeType: MimeType.json,
