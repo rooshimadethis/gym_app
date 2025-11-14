@@ -39,6 +39,9 @@ dependencies:
   flutter_foreground_task: ^9.1.0
   animations: ^2.1.0
   flutter_displaymode: ^0.7.0
+  sqflite: ^2.3.3+1
+  open_file: ^3.3.2
+  file_saver: ^0.2.12
 
 dev_dependencies:
   flutter_test:
