@@ -246,7 +246,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         newExercise.imageUrl = assetPath;
                       }
                     }
-                    _allExercises.add(newExercise);
+                    _allExercises.insert(0, newExercise);
                     filterExercises();
                     _saveExercises();
                   });

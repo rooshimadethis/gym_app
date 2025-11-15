@@ -6,8 +6,6 @@ This means a list of all exercises will be the main tool available. Towards the 
 
 TODO:
 [] last set timer
-[] when adding a new exercise add it to the top
-[] .5 lb/kg doesn't work
 [] set notification sound at chosen time
 [] after doing an exercise, move it to the bottom (flash?)
  - opencontainer is making it hard to do the animation
@@ -19,4 +17,6 @@ TODO:
     - It's not gonna be usable for me personally until then
     - did fragileuserdata, lets see how well it works
 [x] Count up stopwatch between sets
-[x] must click finish rest to close (flash)
+[x] must click finish rest to close
+[x] .5 lb/kg doesn't work
+[x] when adding a new exercise add it to the top
