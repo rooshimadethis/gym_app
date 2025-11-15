@@ -5,11 +5,43 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  final TextEditingController _timerController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTimerDuration();
+  }
+
+  Future<void> _loadTimerDuration() async {
+    final prefs = await SharedPreferences.getInstance();
+    final timerDuration = prefs.getInt('timer_duration') ?? 120;
+    _timerController.text = timerDuration.toString();
+  }
+
+  Future<void> _saveTimerDuration(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    final timerDuration = int.tryParse(value) ?? 120;
+    await prefs.setInt('timer_duration', timerDuration);
+  }
+
+  @override
+  void dispose() {
+    _timerController.dispose();
+    super.dispose();
+  }
 
   Future<void> _importExerciseData(BuildContext context) async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -116,6 +148,19 @@ class SettingsPage extends StatelessWidget {
             leading: const Icon(Icons.file_download),
             title: const Text('Export Exercise Data'),
             onTap: () => _exportExerciseData(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.timer),
+            title: const Text('Rest Timer Notification (seconds)'),
+            subtitle: TextField(
+              controller: _timerController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: _saveTimerDuration,
+              decoration: const InputDecoration(
+                labelText: 'Duration in seconds',
+              ),
+            ),
           ),
         ],
       ),

@@ -41,6 +41,7 @@ dependencies:
   open_file: ^3.3.2
   file_saver: ^0.2.12
   file_picker: ^8.0.6
+  flutter_local_notifications: ^17.2.1
 
 dev_dependencies:
   flutter_test:
