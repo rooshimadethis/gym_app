@@ -8,6 +8,7 @@ TODO:
 [] last set timer
 [] when adding a new exercise add it to the top
 [] .5 lb/kg doesn't work
+[] set notification sound at chosen time
 [] after doing an exercise, move it to the bottom (flash?)
  - opencontainer is making it hard to do the animation
  - Make sure order gets saved to sharedprefs
