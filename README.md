@@ -7,6 +7,7 @@ This means a list of all exercises will be the main tool available. Towards the 
 ## TODO
 
 ### In Progress
+- [ ] match splash screen
 - [ ] Animate card movement on first page
   - opencontainer is making it hard to do the animation
 - [ ] remove ignoring of deprecated libraries and try again (sharexfiles)
