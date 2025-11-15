@@ -7,10 +7,10 @@ This means a list of all exercises will be the main tool available. Towards the 
 ## TODO
 
 ### In Progress
-- [ ] Last set timer
 - [ ] Animate card movement on first page
   - opencontainer is making it hard to do the animation
 - [ ] remove ignoring of deprecated libraries and try again (sharexfiles)
+- [ ] Look into info messages in flutter analyze
 
 ### Completed
 - [x] import/export exercise data. Just in case sharedprefs doesn't work. Also Android<->iOS before database
@@ -24,3 +24,4 @@ This means a list of all exercises will be the main tool available. Towards the 
 - [x] back after search clears? (i actually don't remember when this was implemented)
 - [x] Set notification sound at chosen time
 - [x] After doing an exercise, move it to the bottom
+- [x] Last set timer

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'dart:convert';
 import 'package:animations/animations.dart';
@@ -79,6 +80,9 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Exercise> _allExercises = [];
   List<Exercise> _filteredExercises = [];
   final TextEditingController _searchController = TextEditingController();
+  final Stopwatch _workoutStopwatch = Stopwatch();
+  Timer? _workoutTimer;
+  bool _isWorkoutTimerRunning = false;
 
   final Map<String, String> _exerciseImageMap = {
     'Chest Press': 'assets/images/exercises/chest-press.webp',
@@ -209,7 +213,35 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _workoutTimer?.cancel();
     super.dispose();
+  }
+
+  void _startWorkoutTimer() {
+    setState(() {
+      _isWorkoutTimerRunning = true;
+    });
+    _workoutStopwatch.start();
+    _workoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {});
+    });
+  }
+
+  void _stopWorkoutTimer() {
+    setState(() {
+      _isWorkoutTimerRunning = false;
+    });
+    _workoutStopwatch.stop();
+    _workoutStopwatch.reset();
+    _workoutTimer?.cancel();
+  }
+
+  String _formatWorkoutTime(int milliseconds) {
+    int seconds = (milliseconds / 1000).truncate();
+    int minutes = (seconds / 60).truncate();
+    String minutesStr = (minutes % 60).toString().padLeft(2, '0');
+    String secondsStr = (seconds % 60).toString().padLeft(2, '0');
+    return '$minutesStr:$secondsStr';
   }
 
   Future<void> _showAddExerciseDialog() async {
@@ -281,6 +313,19 @@ class _MyHomePageState extends State<MyHomePage> {
             style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
           ),
           actions: [
+            if (_isWorkoutTimerRunning)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: Text(
+                    _formatWorkoutTime(_workoutStopwatch.elapsedMilliseconds),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+              ),
             IconButton(
               icon: Icon(
                 Icons.settings,
@@ -346,8 +391,12 @@ class _MyHomePageState extends State<MyHomePage> {
                         openBuilder: (context, action) {
                           return ExerciseDetailView(
                             exercise: exercise,
-                            onExerciseCompleted: () =>
-                                _moveExerciseToBottom(exercise),
+                            onExerciseCompleted: () {
+                              _moveExerciseToBottom(exercise);
+                              if (!_isWorkoutTimerRunning) {
+                                _startWorkoutTimer();
+                              }
+                            },
                           );
                         },
                         onClosed: (_) => _saveExercises(),
@@ -355,6 +404,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           return GestureDetector(
                             onTap: () {
                               HapticFeedback.lightImpact();
+                              _stopWorkoutTimer();
                               action();
                             },
                             child: AspectRatio(
