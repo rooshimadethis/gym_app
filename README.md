@@ -6,6 +6,7 @@ This means a list of all exercises will be the main tool available. Towards the 
 
 TODO:
 [] last set timer
+[] when adding a new exercise add it to the top
 [] .5 lb/kg doesn't work
 [] after doing an exercise, move it to the bottom (flash?)
  - opencontainer is making it hard to do the animation
