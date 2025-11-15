@@ -8,10 +8,8 @@ This means a list of all exercises will be the main tool available. Towards the 
 
 ### In Progress
 - [ ] Last set timer
-- [ ] Set notification sound at chosen time
-- [ ] After doing an exercise, move it to the bottom (flash?)
+- [ ] Animate card movement on first page
   - opencontainer is making it hard to do the animation
-  - Make sure order gets saved to sharedprefs
 - [ ] remove ignoring of deprecated libraries and try again (sharexfiles)
 
 ### Completed
@@ -24,3 +22,5 @@ This means a list of all exercises will be the main tool available. Towards the 
 - [x] .5 lb/kg doesn't work
 - [x] when adding a new exercise add it to the top
 - [x] back after search clears? (i actually don't remember when this was implemented)
+- [x] Set notification sound at chosen time
+- [x] After doing an exercise, move it to the bottom
