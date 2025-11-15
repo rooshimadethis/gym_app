@@ -1,11 +1,9 @@
 import 'dart:async';
+import 'package:gym_app/exercise_card.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'dart:convert';
-import 'package:animations/animations.dart';
 import 'package:flutter/services.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:gym_app/exercise_detail_view.dart';
 import 'package:gym_app/models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gym_app/settings_page.dart';
@@ -56,7 +54,7 @@ class MyApp extends StatelessWidget {
           onSecondary: Color(0xFF212121),
           error: Colors.red,
           onError: Colors.white,
-          surface: Color(0xFF121212),
+          surface: Color(0xFF212121),
           onSurface: Colors.white,
         ),
         useMaterial3: true,
@@ -307,7 +305,7 @@ class _MyHomePageState extends State<MyHomePage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Colors.black,
+          backgroundColor: const Color(0xFF212121),
           title: Text(
             widget.title,
             style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
@@ -372,100 +370,18 @@ class _MyHomePageState extends State<MyHomePage> {
                 itemCount: _filteredExercises.length,
                 itemBuilder: (context, index) {
                   final exercise = _filteredExercises[index];
-                  final placeHolderImageUrl =
-                      'https://placehold.co/400x200.png?text=${Uri.encodeComponent(exercise.name)}';
                   return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: GestureDetector(
-                      onLongPress: () {
-                        _showDeleteExerciseDialog(exercise);
+                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                    child: ExerciseCard(
+                      exercise: exercise,
+                      onExerciseCompleted: () {
+                        _moveExerciseToBottom(exercise);
+                        if (!_isWorkoutTimerRunning) {
+                          _startWorkoutTimer();
+                        }
                       },
-                      child: OpenContainer(
-                        tappable: false,
-                        closedColor: Theme.of(context).colorScheme.primary,
-                        closedShape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15.0),
-                        ),
-                        closedElevation: 0.0,
-                        transitionDuration: const Duration(milliseconds: 300),
-                        openBuilder: (context, action) {
-                          return ExerciseDetailView(
-                            exercise: exercise,
-                            onExerciseCompleted: () {
-                              _moveExerciseToBottom(exercise);
-                              if (!_isWorkoutTimerRunning) {
-                                _startWorkoutTimer();
-                              }
-                            },
-                          );
-                        },
-                        onClosed: (_) => _saveExercises(),
-                        closedBuilder: (context, action) {
-                          return GestureDetector(
-                            onTap: () {
-                              HapticFeedback.lightImpact();
-                              _stopWorkoutTimer();
-                              action();
-                            },
-                            child: AspectRatio(
-                              aspectRatio:
-                                  2 /
-                                  1, // Changed to 2:1 aspect ratio for shorter cards
-                              child: Card(
-                                elevation: 0,
-                                color: Colors.transparent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15.0),
-                                ),
-                                clipBehavior: Clip.antiAlias,
-                                child: Column(
-                                  children: [
-                                    Expanded(
-                                      child:
-                                          exercise.hasLocalImage &&
-                                              exercise.imageUrl != null
-                                          ? Image.asset(
-                                              exercise.imageUrl!,
-                                              fit: BoxFit
-                                                  .contain, // Changed to contain
-                                              width: double.infinity,
-                                            )
-                                          : CachedNetworkImage(
-                                              imageUrl: placeHolderImageUrl,
-                                              fit: BoxFit
-                                                  .contain, // Changed to contain
-                                              width: double.infinity,
-                                              placeholder: (context, url) =>
-                                                  Container(
-                                                    color: Colors.grey[300],
-                                                  ),
-                                              errorWidget:
-                                                  (context, url, error) =>
-                                                      const Icon(Icons.error),
-                                            ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: Text(
-                                        exercise.name,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .headlineSmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.onPrimary,
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                      onLongPress: () => _showDeleteExerciseDialog(exercise),
+                      onTap: () => _stopWorkoutTimer(),
                     ),
                   );
                 },
