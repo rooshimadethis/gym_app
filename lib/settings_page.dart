@@ -18,23 +18,35 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _timerController = TextEditingController();
+  bool _notificationsEnabled = true;
 
   @override
   void initState() {
     super.initState();
-    _loadTimerDuration();
+    _loadSettings();
   }
 
-  Future<void> _loadTimerDuration() async {
+  Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final timerDuration = prefs.getInt('timer_duration') ?? 120;
     _timerController.text = timerDuration.toString();
+    setState(() {
+      _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+    });
   }
 
   Future<void> _saveTimerDuration(String value) async {
     final prefs = await SharedPreferences.getInstance();
     final timerDuration = int.tryParse(value) ?? 120;
     await prefs.setInt('timer_duration', timerDuration);
+  }
+
+  Future<void> _saveNotificationSetting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_enabled', value);
+    setState(() {
+      _notificationsEnabled = value;
+    });
   }
 
   @override
@@ -148,6 +160,12 @@ class _SettingsPageState extends State<SettingsPage> {
             leading: const Icon(Icons.file_download),
             title: const Text('Export Exercise Data'),
             onTap: () => _exportExerciseData(context),
+          ),
+          SwitchListTile(
+            title: const Text('Enable Rest Timer Notifications'),
+            value: _notificationsEnabled,
+            onChanged: _saveNotificationSetting,
+            secondary: const Icon(Icons.notifications),
           ),
           ListTile(
             leading: const Icon(Icons.timer),

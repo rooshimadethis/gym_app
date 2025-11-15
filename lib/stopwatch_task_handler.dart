@@ -12,6 +12,7 @@ class StopwatchTaskHandler extends TaskHandler {
   int _currentElapsedMilliseconds = 0;
   bool _notificationSent = false;
   int _timerDuration = 120;
+  bool _notificationsEnabled = true;
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -20,6 +21,7 @@ class StopwatchTaskHandler extends TaskHandler {
     _notificationSent = false;
     final prefs = await SharedPreferences.getInstance();
     _timerDuration = prefs.getInt('timer_duration') ?? 120;
+    _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
 
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -63,7 +65,7 @@ class StopwatchTaskHandler extends TaskHandler {
       _currentElapsedMilliseconds = data['elapsedMilliseconds'] as int;
       final String formattedTime = _formatTime(_currentElapsedMilliseconds);
 
-      if (_currentElapsedMilliseconds >= _timerDuration * 1000 && !_notificationSent) {
+      if (_notificationsEnabled && _currentElapsedMilliseconds >= _timerDuration * 1000 && !_notificationSent) {
         _showNotification();
         _notificationSent = true;
       }
