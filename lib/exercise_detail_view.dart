@@ -286,10 +286,13 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                                   ),
                                 ),
                               ),
-                              keyboardType: TextInputType.number,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
                               inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(3),
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'^\d+\.?\d{0,1}')),
+                                LengthLimitingTextInputFormatter(5),
                               ],
                               onSubmitted: (_) {
                                 FocusScope.of(
