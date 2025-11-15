@@ -66,14 +66,19 @@ class _SettingsPageState extends State<SettingsPage> {
         File file = File(result.files.single.path!);
         String content = await file.readAsString();
         
-        // Basic validation to check if it's our data
-        jsonDecode(content) as List;
+        final data = jsonDecode(content) as Map<String, dynamic>;
+        final exercises = data['exercises_data'] as List;
+        final settings = data['settings'] as Map<String, dynamic>;
 
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('exercises_data', content);
+        await prefs.setString('exercises_data', jsonEncode(exercises));
+        await prefs.setInt('timer_duration', settings['timer_duration']);
+        await prefs.setBool('notifications_enabled', settings['notifications_enabled']);
+
+        _loadSettings();
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Exercise data imported successfully!')),
+          const SnackBar(content: Text('Data imported successfully!')),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -90,6 +95,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _exportExerciseData(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     final exercisesJson = prefs.getString('exercises_data');
+    final timerDuration = prefs.getInt('timer_duration') ?? 120;
+    final notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
 
     if (exercisesJson == null || exercisesJson.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -98,8 +105,16 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
+    final data = {
+      'exercises_data': jsonDecode(exercisesJson),
+      'settings': {
+        'timer_duration': timerDuration,
+        'notifications_enabled': notificationsEnabled,
+      },
+    };
+
     try {
-      Uint8List bytes = utf8.encode(exercisesJson);
+      Uint8List bytes = utf8.encode(jsonEncode(data));
 
       final now = DateTime.now();
       final year = now.year;
