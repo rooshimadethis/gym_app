@@ -4,16 +4,18 @@ import 'package:flutter/services.dart';
 import 'package:gym_app/models.dart';
 import 'package:gym_app/stopwatch_modal.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
 class ExerciseDetailView extends StatefulWidget {
   final Exercise exercise;
   final VoidCallback onExerciseCompleted;
 
-  const ExerciseDetailView(
-      {super.key,
-      required this.exercise,
-      required this.onExerciseCompleted});
+  const ExerciseDetailView({
+    super.key,
+    required this.exercise,
+    required this.onExerciseCompleted,
+  });
 
   @override
   State<ExerciseDetailView> createState() => _ExerciseDetailViewState();
@@ -68,10 +70,20 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
     );
   }
 
+  bool _warmupSetEnabled = false;
+
   @override
   void initState() {
     super.initState();
+    _loadSettings();
     _initializeControllersAndFocusNodes();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _warmupSetEnabled = prefs.getBool('warmup_set_enabled') ?? false;
+    });
   }
 
   void _initializeControllersAndFocusNodes() {
@@ -182,8 +194,11 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
     if (_lastFocusedSet < widget.exercise.sets.length - 1) {
       final reps = _repsControllers[_lastFocusedSet].text;
 
-      _weightControllers[_lastFocusedSet + 1].text = weight;
-      _repsControllers[_lastFocusedSet + 1].text = reps;
+      // Only auto-fill if it's NOT a warmup set (first set with warmup enabled)
+      if (!(_warmupSetEnabled && _lastFocusedSet == 0)) {
+        _weightControllers[_lastFocusedSet + 1].text = weight;
+        _repsControllers[_lastFocusedSet + 1].text = reps;
+      }
 
       FocusScope.of(context).requestFocus(_repsFocusNodes[_lastFocusedSet + 1]);
     }
@@ -257,89 +272,113 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                 ),
                 SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
+                    final isWarmupSet = _warmupSetEnabled && index == 0;
                     return Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16.0,
                         vertical: 8.0,
                       ),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 30,
-                            child: Text(
-                              '${index + 1}.',
+                      child: Container(
+                        decoration: isWarmupSet
+                            ? BoxDecoration(
+                                color: Colors.orange.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8.0),
+                                border: Border.all(
+                                  color: Colors.orange.withValues(alpha: 0.3),
+                                ),
+                              )
+                            : null,
+                        padding: isWarmupSet
+                            ? const EdgeInsets.all(8.0)
+                            : EdgeInsets.zero,
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 30,
+                              child: Text(
+                                isWarmupSet ? 'W.' : '${index + 1}.',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      color: isWarmupSet ? Colors.orange : null,
+                                      fontWeight: isWarmupSet
+                                          ? FontWeight.bold
+                                          : null,
+                                    ),
+                              ),
+                            ),
+                            Expanded(
+                              child: TextField(
+                                controller: _weightControllers[index],
+                                focusNode: _weightFocusNodes[index],
+                                decoration: InputDecoration(
+                                  labelText: 'Weight',
+                                  border: const OutlineInputBorder(),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(
+                                    RegExp(r'^\d+\.?\d{0,1}'),
+                                  ),
+                                  LengthLimitingTextInputFormatter(5),
+                                ],
+                                onSubmitted: (_) {
+                                  FocusScope.of(
+                                    context,
+                                  ).requestFocus(_repsFocusNodes[index]);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8.0),
+                            Text(
+                              'x',
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
-                          ),
-                          Expanded(
-                            child: TextField(
-                              controller: _weightControllers[index],
-                              focusNode: _weightFocusNodes[index],
-                              decoration: InputDecoration(
-                                labelText: 'Weight',
-                                border: const OutlineInputBorder(),
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
+                            const SizedBox(width: 8.0),
+                            Expanded(
+                              child: TextField(
+                                controller: _repsControllers[index],
+                                focusNode: _repsFocusNodes[index],
+                                decoration: InputDecoration(
+                                  labelText: 'Reps',
+                                  border: const OutlineInputBorder(),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
                                   ),
                                 ),
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                  LengthLimitingTextInputFormatter(2),
+                                ],
+                                onSubmitted: (_) {
+                                  HapticFeedback.mediumImpact();
+                                  _saveData(); // Save current data
+                                  if (index ==
+                                      widget.exercise.sets.length - 1) {
+                                    widget.onExerciseCompleted();
+                                    Navigator.pop(context); // Finish exercise
+                                  } else {
+                                    _logSet(); // Log set and move to next
+                                  }
+                                },
                               ),
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                      decimal: true),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d+\.?\d{0,1}')),
-                                LengthLimitingTextInputFormatter(5),
-                              ],
-                              onSubmitted: (_) {
-                                FocusScope.of(
-                                  context,
-                                ).requestFocus(_repsFocusNodes[index]);
-                              },
                             ),
-                          ),
-                          const SizedBox(width: 8.0),
-                          Text(
-                            'x',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(width: 8.0),
-                          Expanded(
-                            child: TextField(
-                              controller: _repsControllers[index],
-                              focusNode: _repsFocusNodes[index],
-                              decoration: InputDecoration(
-                                labelText: 'Reps',
-                                border: const OutlineInputBorder(),
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(2),
-                              ],
-                              onSubmitted: (_) {
-                                HapticFeedback.mediumImpact();
-                                _saveData(); // Save current data
-                                if (index == widget.exercise.sets.length - 1) {
-                                  widget.onExerciseCompleted();
-                                  Navigator.pop(context); // Finish exercise
-                                } else {
-                                  _logSet(); // Log set and move to next
-                                }
-                              },
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   }, childCount: widget.exercise.sets.length),

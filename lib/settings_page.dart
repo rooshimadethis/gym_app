@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
@@ -19,6 +18,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _timerController = TextEditingController();
   bool _notificationsEnabled = true;
+  bool _warmupSetEnabled = false;
 
   @override
   void initState() {
@@ -32,6 +32,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _timerController.text = timerDuration.toString();
     setState(() {
       _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+      _warmupSetEnabled = prefs.getBool('warmup_set_enabled') ?? false;
     });
   }
 
@@ -49,13 +50,21 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  Future<void> _saveWarmupSetSetting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('warmup_set_enabled', value);
+    setState(() {
+      _warmupSetEnabled = value;
+    });
+  }
+
   @override
   void dispose() {
     _timerController.dispose();
     super.dispose();
   }
 
-  Future<void> _importExerciseData(BuildContext context) async {
+  Future<void> _importExerciseData() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['json'],
@@ -65,7 +74,7 @@ class _SettingsPageState extends State<SettingsPage> {
       try {
         File file = File(result.files.single.path!);
         String content = await file.readAsString();
-        
+
         final data = jsonDecode(content) as Map<String, dynamic>;
         final exercises = data['exercises_data'] as List;
         final settings = data['settings'] as Map<String, dynamic>;
@@ -73,32 +82,46 @@ class _SettingsPageState extends State<SettingsPage> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('exercises_data', jsonEncode(exercises));
         await prefs.setInt('timer_duration', settings['timer_duration']);
-        await prefs.setBool('notifications_enabled', settings['notifications_enabled']);
+        await prefs.setBool(
+          'notifications_enabled',
+          settings['notifications_enabled'],
+        );
+        if (settings.containsKey('warmup_set_enabled')) {
+          await prefs.setBool(
+            'warmup_set_enabled',
+            settings['warmup_set_enabled'],
+          );
+        }
 
         _loadSettings();
 
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Data imported successfully!')),
         );
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error importing data: Invalid file format.')),
         );
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Import cancelled.')),
-      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Import cancelled.')));
     }
   }
 
-  Future<void> _exportExerciseData(BuildContext context) async {
+  Future<void> _exportExerciseData() async {
     final prefs = await SharedPreferences.getInstance();
     final exercisesJson = prefs.getString('exercises_data');
     final timerDuration = prefs.getInt('timer_duration') ?? 120;
     final notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+    final warmupSetEnabled = prefs.getBool('warmup_set_enabled') ?? false;
 
     if (exercisesJson == null || exercisesJson.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No exercise data to export.')),
       );
@@ -110,6 +133,7 @@ class _SettingsPageState extends State<SettingsPage> {
       'settings': {
         'timer_duration': timerDuration,
         'notifications_enabled': notificationsEnabled,
+        'warmup_set_enabled': warmupSetEnabled,
       },
     };
 
@@ -135,6 +159,7 @@ class _SettingsPageState extends State<SettingsPage> {
       );
 
       if (path != null) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Exported to $path'),
@@ -147,40 +172,49 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Export cancelled.')),
-        );
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Export cancelled.')));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error exporting data: $e')),
-      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error exporting data: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
+      appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
           ListTile(
             leading: const Icon(Icons.file_upload),
             title: const Text('Import Exercise Data'),
-            onTap: () => _importExerciseData(context),
+            onTap: _importExerciseData,
           ),
           ListTile(
             leading: const Icon(Icons.file_download),
             title: const Text('Export Exercise Data'),
-            onTap: () => _exportExerciseData(context),
+            onTap: _exportExerciseData,
           ),
           SwitchListTile(
             title: const Text('Enable Rest Timer Notifications'),
             value: _notificationsEnabled,
             onChanged: _saveNotificationSetting,
             secondary: const Icon(Icons.notifications),
+          ),
+          SwitchListTile(
+            title: const Text('Enable Warmup Set'),
+            subtitle: const Text(
+              'First set won\'t auto-fill the next set with weight/reps',
+            ),
+            value: _warmupSetEnabled,
+            onChanged: _saveWarmupSetSetting,
+            secondary: const Icon(Icons.fitness_center),
           ),
           ListTile(
             leading: const Icon(Icons.timer),
