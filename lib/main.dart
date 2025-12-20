@@ -332,9 +332,7 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () async {
                 await Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const SettingsPage(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const SettingsPage()),
                 );
                 _loadExercises();
               },
@@ -371,11 +369,15 @@ class _MyHomePageState extends State<MyHomePage> {
                 itemBuilder: (context, index) {
                   final exercise = _filteredExercises[index];
                   return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8.0,
+                      horizontal: 16.0,
+                    ),
                     child: ExerciseCard(
                       exercise: exercise,
                       onExerciseCompleted: () {
                         _moveExerciseToBottom(exercise);
+                        _workoutStopwatch.reset();
                         if (!_isWorkoutTimerRunning) {
                           _startWorkoutTimer();
                         }
@@ -392,6 +394,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
   }
+
   Future<void> _showDeleteExerciseDialog(Exercise exerciseToDelete) async {
     return showDialog<void>(
       context: context,
