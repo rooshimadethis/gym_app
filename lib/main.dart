@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:gym_app/exercise_card.dart';
+import 'package:gym_app/alternative_exercise_group.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
@@ -180,10 +181,35 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  List<List<Exercise>> _getDisplayGroups() {
+    final Map<String, List<Exercise>> groups = {};
+
+    for (var exercise in _filteredExercises) {
+      final key = exercise.groupId ?? 'standalone_${exercise.name}';
+      groups.putIfAbsent(key, () => []).add(exercise);
+    }
+
+    return groups.values.toList();
+  }
+
   void _moveExerciseToBottom(Exercise exercise) {
     setState(() {
-      _allExercises.remove(exercise);
-      _allExercises.add(exercise);
+      if (exercise.isPartOfGroup) {
+        // Find all exercises with same groupId
+        final groupExercises = _allExercises
+            .where((e) => e.groupId == exercise.groupId)
+            .toList();
+
+        // Remove all from list
+        _allExercises.removeWhere((e) => e.groupId == exercise.groupId);
+
+        // Add all to bottom
+        _allExercises.addAll(groupExercises);
+      } else {
+        // Single exercise
+        _allExercises.remove(exercise);
+        _allExercises.add(exercise);
+      }
       filterExercises();
     });
     _saveExercises();
@@ -365,34 +391,269 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Expanded(
               child: ListView.builder(
-                itemCount: _filteredExercises.length,
+                itemCount: _getDisplayGroups().length,
                 itemBuilder: (context, index) {
-                  final exercise = _filteredExercises[index];
-                  return Padding(
-                    key: ObjectKey(exercise),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8.0,
-                      horizontal: 16.0,
-                    ),
-                    child: ExerciseCard(
-                      exercise: exercise,
-                      onExerciseCompleted: () {
-                        _moveExerciseToBottom(exercise);
-                        _workoutStopwatch.reset();
-                        if (!_isWorkoutTimerRunning) {
-                          _startWorkoutTimer();
-                        }
-                      },
-                      onLongPress: () => _showDeleteExerciseDialog(exercise),
-                      onTap: () => _stopWorkoutTimer(),
-                    ),
-                  );
+                  final group = _getDisplayGroups()[index];
+
+                  if (group.length == 1) {
+                    // Single exercise - render as before
+                    final exercise = group[0];
+                    return Padding(
+                      key: ObjectKey(exercise),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8.0,
+                        horizontal: 16.0,
+                      ),
+                      child: ExerciseCard(
+                        exercise: exercise,
+                        onExerciseCompleted: () {
+                          _moveExerciseToBottom(exercise);
+                          _workoutStopwatch.reset();
+                          if (!_isWorkoutTimerRunning) {
+                            _startWorkoutTimer();
+                          }
+                        },
+                        onLongPress: () => _showExerciseOptionsDialog(exercise),
+                        onTap: () => _stopWorkoutTimer(),
+                      ),
+                    );
+                  } else {
+                    // Alternative group - render horizontal scroll
+                    return Padding(
+                      key: ObjectKey(group[0].groupId),
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: AlternativeExerciseGroup(
+                        alternatives: group,
+                        onExerciseCompleted: (exercise) {
+                          _moveExerciseToBottom(exercise);
+                          _workoutStopwatch.reset();
+                          if (!_isWorkoutTimerRunning) {
+                            _startWorkoutTimer();
+                          }
+                        },
+                        onLongPress: (exercise) =>
+                            _showExerciseOptionsDialog(exercise),
+                        onTap: () => _stopWorkoutTimer(),
+                      ),
+                    );
+                  }
                 },
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _showLinkAlternativeDialog(Exercise sourceExercise) async {
+    // Get standalone exercises (not in any group, excluding source)
+    final standaloneExercises = _allExercises
+        .where((e) =>
+            e != sourceExercise &&
+            !e.isPartOfGroup)
+        .toList();
+
+    // Get existing groups (excluding source's group if it has one)
+    final Map<String, List<Exercise>> existingGroups = {};
+    for (var exercise in _allExercises) {
+      if (exercise.isPartOfGroup &&
+          exercise.groupId != sourceExercise.groupId) {
+        existingGroups.putIfAbsent(exercise.groupId!, () => []).add(exercise);
+      }
+    }
+
+    // Get current group members if source is grouped
+    List<Exercise>? currentGroupMembers;
+    if (sourceExercise.isPartOfGroup) {
+      currentGroupMembers = _allExercises
+          .where((e) =>
+              e.groupId == sourceExercise.groupId &&
+              e != sourceExercise)
+          .toList();
+    }
+
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Link "${sourceExercise.name}"'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                // Show current group if source is already grouped
+                if (currentGroupMembers != null &&
+                    currentGroupMembers.isNotEmpty) ...[
+                  const Text(
+                    'Currently linked with:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...currentGroupMembers.map((e) => ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.link, size: 16),
+                    title: Text(e.name),
+                  )),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                ],
+
+                // Section: Individual Exercises
+                if (standaloneExercises.isNotEmpty) ...[
+                  const Text(
+                    'Individual Exercises:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...standaloneExercises.map((targetExercise) {
+                    return ListTile(
+                      title: Text(targetExercise.name),
+                      onTap: () {
+                        setState(() {
+                          // Create or use existing groupId
+                          final groupId = sourceExercise.groupId ??
+                              DateTime.now().millisecondsSinceEpoch.toString();
+
+                          sourceExercise.groupId = groupId;
+                          targetExercise.groupId = groupId;
+
+                          filterExercises();
+                          _saveExercises();
+                        });
+                        Navigator.of(context).pop();
+                      },
+                    );
+                  }),
+                ],
+
+                // Section: Join Existing Group
+                if (existingGroups.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Join Existing Group:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...existingGroups.entries.map((entry) {
+                    final groupExercises = entry.value;
+                    final firstExerciseName = groupExercises.first.name;
+                    final othersCount = groupExercises.length - 1;
+                    final label = othersCount > 0
+                        ? '$firstExerciseName + $othersCount other${othersCount > 1 ? 's' : ''}'
+                        : firstExerciseName;
+
+                    return ListTile(
+                      leading: const Icon(Icons.workspaces),
+                      title: Text(label),
+                      subtitle: Text(
+                        groupExercises.map((e) => e.name).join(', '),
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      onTap: () {
+                        setState(() {
+                          sourceExercise.groupId = entry.key;
+                          filterExercises();
+                          _saveExercises();
+                        });
+                        Navigator.of(context).pop();
+                      },
+                    );
+                  }),
+                ],
+
+                // Show message if no options available
+                if (standaloneExercises.isEmpty && existingGroups.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text(
+                      'No exercises available to link. All exercises are already in groups.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showExerciseOptionsDialog(Exercise exercise) async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(exercise.name),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.link),
+                title: const Text('Link as Alternative'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showLinkAlternativeDialog(exercise);
+                },
+              ),
+              if (exercise.isPartOfGroup)
+                ListTile(
+                  leading: const Icon(Icons.link_off),
+                  title: const Text('Unlink from Alternatives'),
+                  onTap: () {
+                    setState(() {
+                      final oldGroupId = exercise.groupId;
+                      exercise.groupId = null;
+
+                      // Check if only 1 exercise remains in the group
+                      final remainingInGroup = _allExercises
+                          .where((e) => e.groupId == oldGroupId)
+                          .toList();
+
+                      if (remainingInGroup.length == 1) {
+                        remainingInGroup.first.groupId = null;
+                      }
+
+                      filterExercises();
+                      _saveExercises();
+                    });
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text(
+                  'Delete Exercise',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showDeleteExerciseDialog(exercise);
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -417,6 +678,18 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () {
                 setState(() {
                   _allExercises.remove(exerciseToDelete);
+
+                  // Clean up groups with only 1 member after deletion
+                  if (exerciseToDelete.isPartOfGroup) {
+                    final remainingInGroup = _allExercises
+                        .where((e) => e.groupId == exerciseToDelete.groupId)
+                        .toList();
+
+                    if (remainingInGroup.length == 1) {
+                      remainingInGroup.first.groupId = null;
+                    }
+                  }
+
                   filterExercises();
                   _saveExercises();
                 });
