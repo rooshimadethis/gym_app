@@ -1,30 +1,30 @@
 # Project Overview
+This is a Flutter gym application ("rooshi's get swole") designed for users in busy gyms. It prioritizes exercises based on available equipment and neglect, rather than rigid day-based splits. Key features include tracking supersets, grouping alternative exercises, and a dynamic list that moves completed exercises to the bottom.
 
-This is a Flutter project for a gym application. The app helps users in busy gyms by suggesting exercises based on available equipment. The main feature is a list of exercises that prioritizes important and recently-neglected workouts. As exercises are completed, they are moved to the bottom of the list.
+# Tech Stack & Libraries
+- **Framework:** Flutter (SDK ^3.9.0)
+- **State Management:** Primarily `StatefulWidget` and `setState`.
+- **Persistence:** `shared_preferences` (storing JSON data for exercises and progress). `sqflite` is a dependency but `main.dart` relies on SharedPreferences.
+- **UI/Styling:** Material 3 with extensive use of Custom Font (`StackSansText`).
+- **Key Packages:**
+    - `flutter_foreground_task` (Stopwatch/Timer background support)
+    - `cached_network_image`
+    - `file_saver` / `file_picker` (Import/Export data)
 
-The project is a standard Flutter application, with support for Android, iOS, Linux, macOS, web, and Windows.
+# Architecture & Conventions
+- **Folder Structure:** Flat structure in `lib/` (e.g., `main.dart`, `models.dart`, `exercise_card.dart`).
+- **Conventions:**
+    - **Logic:** logic stays close to the UI (in the `State` class).
+    - **Models:** Simple Dart classes with `fromJson`/`toJson` (see `models.dart`).
+    - **Linting:** Follows `flutter_lints`.
+- **Task Handling:** Uses a foreground task handler for the stopwatch to keep it running when the app is backgrounded.
 
-# Building and Running
+# Important Commands
+- **Run App:** `flutter run`
+- **Run Tests:** `flutter test`
+- **Analyze Code:** `flutter analyze`
 
-To build and run this project, you will need to have the Flutter SDK installed.
-
-1.  **Get dependencies:**
-    ```bash
-    flutter pub get
-    ```
-
-2.  **Run the app:**
-    ```bash
-    flutter run
-    ```
-
-3.  **Run tests:**
-    ```bash
-    flutter test
-    ```
-
-# Development Conventions
-
-*   **Code Style:** The project uses the `flutter_lints` package to enforce good coding practices. It is recommended to follow the guidelines provided by the linter.
-*   **State Management:** The current `lib/main.dart` uses `StatefulWidget` for state management. For more complex state, consider using a state management solution like Provider or BLoC.
-*   **Testing:** The project includes a `test` directory with a default widget test. It is recommended to add more tests to ensure the quality of the application.
+# Known Issues / Context
+- The app handles supersets and alternative exercise groups (linked exercises).
+- Exercises are loaded from local assets or JSON in SharedPreferences.
+- `OpenContainer` animations are used but have been noted as "hard to do" in previous notes.
