@@ -357,26 +357,29 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             TextButton(
               child: const Text('Add'),
-              onPressed: () {
+              onPressed: () async {
                 HapticFeedback.lightImpact();
                 final newExerciseName = newExerciseController.text;
                 if (newExerciseName.isNotEmpty) {
-                  setState(() async {
-                    final newExercise = Exercise(name: newExerciseName);
-                    final assetPath = _exerciseImageMap[newExercise.name];
-                    if (assetPath != null) {
-                      newExercise.hasLocalImage = await _checkAssetExists(
-                        assetPath,
-                      );
-                      if (newExercise.hasLocalImage) {
-                        newExercise.imageUrl = assetPath;
-                      }
+                  final newExercise = Exercise(name: newExerciseName);
+                  final assetPath = _exerciseImageMap[newExercise.name];
+                  if (assetPath != null) {
+                    newExercise.hasLocalImage = await _checkAssetExists(
+                      assetPath,
+                    );
+                    if (newExercise.hasLocalImage) {
+                      newExercise.imageUrl = assetPath;
                     }
-                    _allExercises.insert(0, newExercise);
-                    filterExercises();
+                  }
+
+                  if (context.mounted) {
+                    setState(() {
+                      _allExercises.insert(0, newExercise);
+                      filterExercises();
+                    });
                     _saveExercises();
-                  });
-                  Navigator.of(context).pop();
+                    Navigator.of(context).pop();
+                  }
                 }
               },
             ),
