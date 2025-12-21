@@ -84,7 +84,8 @@ class _MyHomePageState extends State<MyHomePage> {
   final Stopwatch _workoutStopwatch = Stopwatch();
   Timer? _workoutTimer;
   bool _isWorkoutTimerRunning = false;
-  Map<String, int> _supersetProgress = {}; // Track current position in each superset
+  Map<String, int> _supersetProgress =
+      {}; // Track current position in each superset
 
   final Map<String, String> _exerciseImageMap = {
     'Chest Press': 'assets/images/exercises/chest-press.webp',
@@ -200,9 +201,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   List<Exercise> _getSupersetExercises(String supersetId) {
-    return _filteredExercises
-        .where((e) => e.supersetId == supersetId)
-        .toList()
+    return _filteredExercises.where((e) => e.supersetId == supersetId).toList()
       ..sort((a, b) => (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0));
   }
 
@@ -223,11 +222,14 @@ class _MyHomePageState extends State<MyHomePage> {
       // If exercise is part of superset, group all superset exercises together
       if (exercise.isPartOfSuperset) {
         if (!processedSupersets.contains(exercise.supersetId)) {
-          final supersetExercises = _filteredExercises
-              .where((e) => e.supersetId == exercise.supersetId)
-              .toList()
-            ..sort((a, b) =>
-                (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0));
+          final supersetExercises =
+              _filteredExercises
+                  .where((e) => e.supersetId == exercise.supersetId)
+                  .toList()
+                ..sort(
+                  (a, b) =>
+                      (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0),
+                );
           groups['superset_${exercise.supersetId}'] = supersetExercises;
           processedSupersets.add(exercise.supersetId!);
         }
@@ -253,8 +255,9 @@ class _MyHomePageState extends State<MyHomePage> {
         _allExercises.removeWhere((e) => e.supersetId == exercise.supersetId);
 
         // Sort by supersetOrder and add to bottom
-        supersetExercises.sort((a, b) =>
-            (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0));
+        supersetExercises.sort(
+          (a, b) => (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0),
+        );
         _allExercises.addAll(supersetExercises);
 
         // Reset superset progress
@@ -355,6 +358,7 @@ class _MyHomePageState extends State<MyHomePage> {
             TextButton(
               child: const Text('Add'),
               onPressed: () {
+                HapticFeedback.lightImpact();
                 final newExerciseName = newExerciseController.text;
                 if (newExerciseName.isNotEmpty) {
                   setState(() async {
@@ -477,14 +481,20 @@ class _MyHomePageState extends State<MyHomePage> {
                       onLongPress: (exercise) =>
                           _showExerciseOptionsDialog(exercise),
                       onTap: () => _stopWorkoutTimer(),
-                      currentExerciseIndex:
-                          _supersetProgress[supersetId] ?? 0,
-                      onSupersetProgress: (exercise) => _onSupersetProgress(exercise),
+                      currentExerciseIndex: _supersetProgress[supersetId] ?? 0,
+                      onSupersetProgress: (exercise) =>
+                          _onSupersetProgress(exercise),
                       getSupersetInfo: (exercise) {
-                        final supersetExercises = _getSupersetExercises(supersetId);
-                        final nextIndex = (exercise.supersetOrder! + 1) % supersetExercises.length;
+                        final supersetExercises = _getSupersetExercises(
+                          supersetId,
+                        );
+                        final nextIndex =
+                            (exercise.supersetOrder! + 1) %
+                            supersetExercises.length;
                         return SupersetInfo(
-                          isLastInSuperset: exercise.supersetOrder == supersetExercises.length - 1,
+                          isLastInSuperset:
+                              exercise.supersetOrder ==
+                              supersetExercises.length - 1,
                           nextExerciseName: supersetExercises[nextIndex].name,
                           firstExerciseName: supersetExercises[0].name,
                           totalExercises: supersetExercises.length,
@@ -546,9 +556,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _showLinkAlternativeDialog(Exercise sourceExercise) async {
     // Get standalone exercises (not in any group, excluding source)
     final standaloneExercises = _allExercises
-        .where((e) =>
-            e != sourceExercise &&
-            !e.isPartOfGroup)
+        .where((e) => e != sourceExercise && !e.isPartOfGroup)
         .toList();
 
     // Get existing groups (excluding source's group if it has one)
@@ -564,9 +572,9 @@ class _MyHomePageState extends State<MyHomePage> {
     List<Exercise>? currentGroupMembers;
     if (sourceExercise.isPartOfGroup) {
       currentGroupMembers = _allExercises
-          .where((e) =>
-              e.groupId == sourceExercise.groupId &&
-              e != sourceExercise)
+          .where(
+            (e) => e.groupId == sourceExercise.groupId && e != sourceExercise,
+          )
           .toList();
     }
 
@@ -585,17 +593,16 @@ class _MyHomePageState extends State<MyHomePage> {
                     currentGroupMembers.isNotEmpty) ...[
                   const Text(
                     'Currently linked with:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                   const SizedBox(height: 8),
-                  ...currentGroupMembers.map((e) => ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.link, size: 16),
-                    title: Text(e.name),
-                  )),
+                  ...currentGroupMembers.map(
+                    (e) => ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.link, size: 16),
+                      title: Text(e.name),
+                    ),
+                  ),
                   const Divider(),
                   const SizedBox(height: 8),
                 ],
@@ -604,19 +611,18 @@ class _MyHomePageState extends State<MyHomePage> {
                 if (standaloneExercises.isNotEmpty) ...[
                   const Text(
                     'Individual Exercises:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                   const SizedBox(height: 8),
                   ...standaloneExercises.map((targetExercise) {
                     return ListTile(
                       title: Text(targetExercise.name),
                       onTap: () {
+                        HapticFeedback.lightImpact();
                         setState(() {
                           // Create or use existing groupId
-                          final groupId = sourceExercise.groupId ??
+                          final groupId =
+                              sourceExercise.groupId ??
                               DateTime.now().millisecondsSinceEpoch.toString();
 
                           sourceExercise.groupId = groupId;
@@ -638,10 +644,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   const SizedBox(height: 8),
                   const Text(
                     'Join Existing Group:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                   const SizedBox(height: 8),
                   ...existingGroups.entries.map((entry) {
@@ -660,6 +663,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         style: const TextStyle(fontSize: 11),
                       ),
                       onTap: () {
+                        HapticFeedback.lightImpact();
                         setState(() {
                           sourceExercise.groupId = entry.key;
                           filterExercises();
@@ -698,9 +702,12 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _showLinkSupersetDialog(Exercise sourceExercise) async {
     // Get exercises not in any superset (or in same superset)
     final availableExercises = _allExercises
-        .where((e) =>
-            e != sourceExercise &&
-            (!e.isPartOfSuperset || e.supersetId == sourceExercise.supersetId))
+        .where(
+          (e) =>
+              e != sourceExercise &&
+              (!e.isPartOfSuperset ||
+                  e.supersetId == sourceExercise.supersetId),
+        )
         .toList();
 
     // Get existing supersets (excluding source's superset if it has one)
@@ -708,26 +715,33 @@ class _MyHomePageState extends State<MyHomePage> {
     for (var exercise in _allExercises) {
       if (exercise.isPartOfSuperset &&
           exercise.supersetId != sourceExercise.supersetId) {
-        existingSupersets.putIfAbsent(exercise.supersetId!, () => []).add(exercise);
+        existingSupersets
+            .putIfAbsent(exercise.supersetId!, () => [])
+            .add(exercise);
       }
     }
 
     // Sort each superset by order
     for (var exercises in existingSupersets.values) {
-      exercises.sort((a, b) =>
-          (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0));
+      exercises.sort(
+        (a, b) => (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0),
+      );
     }
 
     // Get current superset members if source is in superset
     List<Exercise>? currentSupersetMembers;
     if (sourceExercise.isPartOfSuperset) {
-      currentSupersetMembers = _allExercises
-          .where((e) =>
-              e.supersetId == sourceExercise.supersetId &&
-              e != sourceExercise)
-          .toList()
-        ..sort((a, b) =>
-            (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0));
+      currentSupersetMembers =
+          _allExercises
+              .where(
+                (e) =>
+                    e.supersetId == sourceExercise.supersetId &&
+                    e != sourceExercise,
+              )
+              .toList()
+            ..sort(
+              (a, b) => (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0),
+            );
     }
 
     return showDialog<void>(
@@ -745,20 +759,19 @@ class _MyHomePageState extends State<MyHomePage> {
                     currentSupersetMembers.isNotEmpty) ...[
                   const Text(
                     'Currently in superset with:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                   const SizedBox(height: 8),
-                  ...currentSupersetMembers.map((e) => ListTile(
-                    dense: true,
-                    leading: Text(
-                      '${(e.supersetOrder ?? 0) + 1}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                  ...currentSupersetMembers.map(
+                    (e) => ListTile(
+                      dense: true,
+                      leading: Text(
+                        '${(e.supersetOrder ?? 0) + 1}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      title: Text(e.name),
                     ),
-                    title: Text(e.name),
-                  )),
+                  ),
                   const Divider(),
                   const SizedBox(height: 8),
                 ],
@@ -767,19 +780,18 @@ class _MyHomePageState extends State<MyHomePage> {
                 if (availableExercises.isNotEmpty) ...[
                   const Text(
                     'Add Exercise to Superset:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                   const SizedBox(height: 8),
                   ...availableExercises.map((targetExercise) {
                     return ListTile(
                       title: Text(targetExercise.name),
                       onTap: () {
+                        HapticFeedback.lightImpact();
                         setState(() {
                           // Create or use existing supersetId
-                          final supersetId = sourceExercise.supersetId ??
+                          final supersetId =
+                              sourceExercise.supersetId ??
                               'SS_${DateTime.now().millisecondsSinceEpoch}';
 
                           // If source doesn't have superset, assign it first
@@ -813,10 +825,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   const SizedBox(height: 8),
                   const Text(
                     'Add to Existing Superset:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                   const SizedBox(height: 8),
                   ...existingSupersets.entries.map((entry) {
@@ -833,6 +842,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         style: const TextStyle(fontSize: 11),
                       ),
                       onTap: () {
+                        HapticFeedback.lightImpact();
                         setState(() {
                           final nextOrder = supersetExercises.length;
                           sourceExercise.supersetId = entry.key;
@@ -871,6 +881,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _showExerciseOptionsDialog(Exercise exercise) async {
+    await HapticFeedback.mediumImpact();
+    if (!mounted) return;
     return showDialog<void>(
       context: context,
       builder: (BuildContext context) {
@@ -883,6 +895,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 leading: const Icon(Icons.link),
                 title: const Text('Link as Alternative'),
                 onTap: () {
+                  HapticFeedback.lightImpact();
                   Navigator.of(context).pop();
                   _showLinkAlternativeDialog(exercise);
                 },
@@ -892,6 +905,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   leading: const Icon(Icons.link_off),
                   title: const Text('Unlink from Alternatives'),
                   onTap: () {
+                    HapticFeedback.lightImpact();
                     setState(() {
                       final oldGroupId = exercise.groupId;
                       exercise.groupId = null;
@@ -915,6 +929,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 leading: const Icon(Icons.layers),
                 title: const Text('Create/Join Superset'),
                 onTap: () {
+                  HapticFeedback.lightImpact();
                   Navigator.of(context).pop();
                   _showLinkSupersetDialog(exercise);
                 },
@@ -924,6 +939,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   leading: const Icon(Icons.layers_clear),
                   title: const Text('Remove from Superset'),
                   onTap: () {
+                    HapticFeedback.lightImpact();
                     setState(() {
                       final oldSupersetId = exercise.supersetId;
                       exercise.supersetId = null;
@@ -939,8 +955,11 @@ class _MyHomePageState extends State<MyHomePage> {
                         remainingInSuperset.first.supersetOrder = null;
                       } else {
                         // Reorder remaining exercises
-                        remainingInSuperset.sort((a, b) =>
-                            (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0));
+                        remainingInSuperset.sort(
+                          (a, b) => (a.supersetOrder ?? 0).compareTo(
+                            b.supersetOrder ?? 0,
+                          ),
+                        );
                         for (var i = 0; i < remainingInSuperset.length; i++) {
                           remainingInSuperset[i].supersetOrder = i;
                         }
@@ -959,6 +978,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   style: TextStyle(color: Colors.red),
                 ),
                 onTap: () {
+                  HapticFeedback.lightImpact();
                   Navigator.of(context).pop();
                   _showDeleteExerciseDialog(exercise);
                 },
@@ -989,6 +1009,7 @@ class _MyHomePageState extends State<MyHomePage> {
             TextButton(
               child: const Text('Delete'),
               onPressed: () {
+                HapticFeedback.lightImpact();
                 setState(() {
                   _allExercises.remove(exerciseToDelete);
 
