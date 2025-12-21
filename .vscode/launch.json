@@ -1,0 +1,41 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "gym_app (iOS Simulator)",
+            "request": "launch",
+            "type": "dart",
+            "preLaunchTask": "Launch iOS Simulator"
+        },
+        {
+            "name": "gym_app (Pixel 9)",
+            "request": "launch",
+            "type": "dart",
+            "preLaunchTask": "Launch Pixel 9"
+        },
+        {
+            "name": "gym_app (Pixel 9 Pro Fold)",
+            "request": "launch",
+            "type": "dart",
+            "preLaunchTask": "Launch Pixel 9 Pro Fold"
+        },
+        {
+            "name": "gym_app (Pixel 9 Pro Fold (2))",
+            "request": "launch",
+            "type": "dart",
+            "preLaunchTask": "Launch Pixel 9 Pro Fold (2)"
+        },
+        {
+            "name": "gym_app (Chrome)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "chrome"
+        },
+        {
+            "name": "gym_app (macOS)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "macos"
+        }
+    ]
+}

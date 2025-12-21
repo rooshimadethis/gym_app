@@ -3,18 +3,39 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gym_app/models.dart';
 import 'package:gym_app/stopwatch_modal.dart';
+import 'package:gym_app/next_exercise_modal.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
+class SupersetInfo {
+  final bool isLastInSuperset;
+  final String nextExerciseName;
+  final String firstExerciseName;
+  final int totalExercises;
+  final int currentPosition;
+
+  SupersetInfo({
+    required this.isLastInSuperset,
+    required this.nextExerciseName,
+    required this.firstExerciseName,
+    required this.totalExercises,
+    required this.currentPosition,
+  });
+}
+
 class ExerciseDetailView extends StatefulWidget {
   final Exercise exercise;
   final VoidCallback onExerciseCompleted;
+  final VoidCallback? onSupersetProgress;
+  final SupersetInfo Function()? getSupersetInfo;
 
   const ExerciseDetailView({
     super.key,
     required this.exercise,
     required this.onExerciseCompleted,
+    this.onSupersetProgress,
+    this.getSupersetInfo,
   });
 
   @override
@@ -203,13 +224,82 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
       FocusScope.of(context).requestFocus(_repsFocusNodes[_lastFocusedSet + 1]);
     }
 
+    // Check if exercise is part of superset
+    if (widget.exercise.isPartOfSuperset && widget.getSupersetInfo != null) {
+      _handleSupersetLogSet();
+    } else {
+      _handleStandardLogSet();
+    }
+  }
+
+  void _handleSupersetLogSet() {
+    final supersetInfo = widget.getSupersetInfo!();
+
+    if (supersetInfo.isLastInSuperset) {
+      // Last exercise in superset -> Show rest timer, THEN "Next Exercise" back to first
+      _showRestThenCycleSuperset(supersetInfo);
+    } else {
+      // Not last exercise -> Show "Next Exercise" modal directly
+      _showNextExerciseModal(supersetInfo);
+    }
+  }
+
+  void _showRestThenCycleSuperset(SupersetInfo info) {
     _requestPermissions();
     _initService();
 
-    // Show the stopwatch modal after logging the set
     showDialog(
       context: context,
-      barrierDismissible: false, // User must tap button to close
+      barrierDismissible: false,
+      builder: (context) => const StopwatchModal(),
+    ).then((_) {
+      // After rest timer, show next exercise modal pointing to first exercise
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => NextExerciseModal(
+          nextExerciseName: info.firstExerciseName,
+          currentExerciseName: widget.exercise.name,
+          currentPosition: info.currentPosition,
+          totalExercises: info.totalExercises,
+        ),
+      ).then((_) {
+        // NOW call onExerciseCompleted to cycle superset to bottom
+        widget.onExerciseCompleted();
+      });
+    });
+  }
+
+  void _showNextExerciseModal(SupersetInfo info) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => NextExerciseModal(
+        nextExerciseName: info.nextExerciseName,
+        currentExerciseName: widget.exercise.name,
+        currentPosition: info.currentPosition,
+        totalExercises: info.totalExercises,
+      ),
+    ).then((_) {
+      // Update progress but DON'T call onExerciseCompleted yet
+      if (widget.onSupersetProgress != null) {
+        widget.onSupersetProgress!();
+      }
+      if (mounted) {
+        Navigator.pop(context); // Close detail view
+      }
+    });
+  }
+
+  void _handleStandardLogSet() {
+    _requestPermissions();
+    _initService();
+
+    // Existing behavior for non-superset exercises
+    showDialog(
+      context: context,
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return const StopwatchModal();
       },

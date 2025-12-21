@@ -10,6 +10,8 @@ class ExerciseCard extends StatefulWidget {
   final VoidCallback onExerciseCompleted;
   final VoidCallback onLongPress;
   final VoidCallback onTap;
+  final VoidCallback? onSupersetProgress;
+  final SupersetInfo Function()? getSupersetInfo;
 
   const ExerciseCard({
     super.key,
@@ -17,6 +19,8 @@ class ExerciseCard extends StatefulWidget {
     required this.onExerciseCompleted,
     required this.onLongPress,
     required this.onTap,
+    this.onSupersetProgress,
+    this.getSupersetInfo,
   });
 
   @override
@@ -81,6 +85,8 @@ class _ExerciseCardState extends State<ExerciseCard>
               return ExerciseDetailView(
                 exercise: widget.exercise,
                 onExerciseCompleted: widget.onExerciseCompleted,
+                onSupersetProgress: widget.onSupersetProgress,
+                getSupersetInfo: widget.getSupersetInfo,
               );
             },
             closedBuilder: (context, action) {

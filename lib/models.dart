@@ -16,6 +16,8 @@ class Exercise {
   String? imageUrl;
   bool hasLocalImage;
   String? groupId;
+  String? supersetId;
+  int? supersetOrder;
 
   Exercise({
     required this.name,
@@ -23,6 +25,8 @@ class Exercise {
     List<SetData>? sets,
     this.hasLocalImage = false,
     this.groupId,
+    this.supersetId,
+    this.supersetOrder,
   }) : sets = sets ?? [SetData(), SetData(), SetData()];
 
   Map<String, dynamic> toJson() => {
@@ -31,6 +35,8 @@ class Exercise {
     'imageUrl': imageUrl,
     'hasLocalImage': hasLocalImage,
     'groupId': groupId,
+    'supersetId': supersetId,
+    'supersetOrder': supersetOrder,
   };
 
   factory Exercise.fromJson(Map<String, dynamic> json) => Exercise(
@@ -38,6 +44,8 @@ class Exercise {
     imageUrl: json['imageUrl'],
     hasLocalImage: json['hasLocalImage'] ?? false,
     groupId: json['groupId'],
+    supersetId: json['supersetId'],
+    supersetOrder: json['supersetOrder'],
     sets:
         (json['sets'] as List?)
             ?.map((setJson) => SetData.fromJson(setJson))
@@ -46,4 +54,5 @@ class Exercise {
   );
 
   bool get isPartOfGroup => groupId != null && groupId!.isNotEmpty;
+  bool get isPartOfSuperset => supersetId != null && supersetId!.isNotEmpty;
 }

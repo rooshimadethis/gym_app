@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:gym_app/exercise_card.dart';
 import 'package:gym_app/alternative_exercise_group.dart';
+import 'package:gym_app/superset_exercise_group.dart';
+import 'package:gym_app/exercise_detail_view.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
@@ -82,6 +84,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final Stopwatch _workoutStopwatch = Stopwatch();
   Timer? _workoutTimer;
   bool _isWorkoutTimerRunning = false;
+  Map<String, int> _supersetProgress = {}; // Track current position in each superset
 
   final Map<String, String> _exerciseImageMap = {
     'Chest Press': 'assets/images/exercises/chest-press.webp',
@@ -112,6 +115,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _loadExercises();
+    _loadSupersetProgress();
     _searchController.addListener(() {
       filterExercises();
     });
@@ -172,6 +176,36 @@ class _MyHomePageState extends State<MyHomePage> {
     await prefs.setString('exercises_data', exercisesJson);
   }
 
+  Future<void> _loadSupersetProgress() async {
+    final prefs = await SharedPreferences.getInstance();
+    final progressJson = prefs.getString('superset_progress');
+    if (progressJson != null) {
+      setState(() {
+        _supersetProgress = Map<String, int>.from(jsonDecode(progressJson));
+      });
+    }
+  }
+
+  Future<void> _saveSupersetProgress() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('superset_progress', jsonEncode(_supersetProgress));
+  }
+
+  void _onSupersetProgress(Exercise exercise) {
+    setState(() {
+      final currentIndex = _supersetProgress[exercise.supersetId!] ?? 0;
+      _supersetProgress[exercise.supersetId!] = currentIndex + 1;
+      _saveSupersetProgress();
+    });
+  }
+
+  List<Exercise> _getSupersetExercises(String supersetId) {
+    return _filteredExercises
+        .where((e) => e.supersetId == supersetId)
+        .toList()
+      ..sort((a, b) => (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0));
+  }
+
   void filterExercises() {
     final query = _searchController.text.toLowerCase();
     setState(() {
@@ -183,10 +217,25 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<List<Exercise>> _getDisplayGroups() {
     final Map<String, List<Exercise>> groups = {};
+    final Set<String> processedSupersets = {};
 
     for (var exercise in _filteredExercises) {
-      final key = exercise.groupId ?? 'standalone_${exercise.name}';
-      groups.putIfAbsent(key, () => []).add(exercise);
+      // If exercise is part of superset, group all superset exercises together
+      if (exercise.isPartOfSuperset) {
+        if (!processedSupersets.contains(exercise.supersetId)) {
+          final supersetExercises = _filteredExercises
+              .where((e) => e.supersetId == exercise.supersetId)
+              .toList()
+            ..sort((a, b) =>
+                (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0));
+          groups['superset_${exercise.supersetId}'] = supersetExercises;
+          processedSupersets.add(exercise.supersetId!);
+        }
+      } else {
+        // Regular grouping for alternatives
+        final key = exercise.groupId ?? 'standalone_${exercise.name}';
+        groups.putIfAbsent(key, () => []).add(exercise);
+      }
     }
 
     return groups.values.toList();
@@ -194,7 +243,24 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _moveExerciseToBottom(Exercise exercise) {
     setState(() {
-      if (exercise.isPartOfGroup) {
+      if (exercise.isPartOfSuperset) {
+        // Move entire superset to bottom
+        final supersetExercises = _allExercises
+            .where((e) => e.supersetId == exercise.supersetId)
+            .toList();
+
+        // Remove all from list
+        _allExercises.removeWhere((e) => e.supersetId == exercise.supersetId);
+
+        // Sort by supersetOrder and add to bottom
+        supersetExercises.sort((a, b) =>
+            (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0));
+        _allExercises.addAll(supersetExercises);
+
+        // Reset superset progress
+        _supersetProgress[exercise.supersetId!] = 0;
+        _saveSupersetProgress();
+      } else if (exercise.isPartOfGroup) {
         // Find all exercises with same groupId
         final groupExercises = _allExercises
             .where((e) => e.groupId == exercise.groupId)
@@ -395,7 +461,38 @@ class _MyHomePageState extends State<MyHomePage> {
                 itemBuilder: (context, index) {
                   final group = _getDisplayGroups()[index];
 
-                  if (group.length == 1) {
+                  // Check if this is a superset
+                  if (group.isNotEmpty && group[0].isPartOfSuperset) {
+                    final supersetId = group[0].supersetId!;
+                    return SupersetExerciseGroup(
+                      key: ObjectKey(supersetId),
+                      supersetExercises: group,
+                      onExerciseCompleted: (exercise) {
+                        _moveExerciseToBottom(exercise);
+                        _workoutStopwatch.reset();
+                        if (!_isWorkoutTimerRunning) {
+                          _startWorkoutTimer();
+                        }
+                      },
+                      onLongPress: (exercise) =>
+                          _showExerciseOptionsDialog(exercise),
+                      onTap: () => _stopWorkoutTimer(),
+                      currentExerciseIndex:
+                          _supersetProgress[supersetId] ?? 0,
+                      onSupersetProgress: (exercise) => _onSupersetProgress(exercise),
+                      getSupersetInfo: (exercise) {
+                        final supersetExercises = _getSupersetExercises(supersetId);
+                        final nextIndex = (exercise.supersetOrder! + 1) % supersetExercises.length;
+                        return SupersetInfo(
+                          isLastInSuperset: exercise.supersetOrder == supersetExercises.length - 1,
+                          nextExerciseName: supersetExercises[nextIndex].name,
+                          firstExerciseName: supersetExercises[0].name,
+                          totalExercises: supersetExercises.length,
+                          currentPosition: exercise.supersetOrder!,
+                        );
+                      },
+                    );
+                  } else if (group.length == 1) {
                     // Single exercise - render as before
                     final exercise = group[0];
                     return Padding(
@@ -598,6 +695,181 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  Future<void> _showLinkSupersetDialog(Exercise sourceExercise) async {
+    // Get exercises not in any superset (or in same superset)
+    final availableExercises = _allExercises
+        .where((e) =>
+            e != sourceExercise &&
+            (!e.isPartOfSuperset || e.supersetId == sourceExercise.supersetId))
+        .toList();
+
+    // Get existing supersets (excluding source's superset if it has one)
+    final Map<String, List<Exercise>> existingSupersets = {};
+    for (var exercise in _allExercises) {
+      if (exercise.isPartOfSuperset &&
+          exercise.supersetId != sourceExercise.supersetId) {
+        existingSupersets.putIfAbsent(exercise.supersetId!, () => []).add(exercise);
+      }
+    }
+
+    // Sort each superset by order
+    for (var exercises in existingSupersets.values) {
+      exercises.sort((a, b) =>
+          (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0));
+    }
+
+    // Get current superset members if source is in superset
+    List<Exercise>? currentSupersetMembers;
+    if (sourceExercise.isPartOfSuperset) {
+      currentSupersetMembers = _allExercises
+          .where((e) =>
+              e.supersetId == sourceExercise.supersetId &&
+              e != sourceExercise)
+          .toList()
+        ..sort((a, b) =>
+            (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0));
+    }
+
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Create Superset with "${sourceExercise.name}"'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                // Show current superset if source is already in one
+                if (currentSupersetMembers != null &&
+                    currentSupersetMembers.isNotEmpty) ...[
+                  const Text(
+                    'Currently in superset with:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...currentSupersetMembers.map((e) => ListTile(
+                    dense: true,
+                    leading: Text(
+                      '${(e.supersetOrder ?? 0) + 1}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    title: Text(e.name),
+                  )),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                ],
+
+                // Section: Individual Exercises
+                if (availableExercises.isNotEmpty) ...[
+                  const Text(
+                    'Add Exercise to Superset:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...availableExercises.map((targetExercise) {
+                    return ListTile(
+                      title: Text(targetExercise.name),
+                      onTap: () {
+                        setState(() {
+                          // Create or use existing supersetId
+                          final supersetId = sourceExercise.supersetId ??
+                              'SS_${DateTime.now().millisecondsSinceEpoch}';
+
+                          // If source doesn't have superset, assign it first
+                          if (!sourceExercise.isPartOfSuperset) {
+                            sourceExercise.supersetId = supersetId;
+                            sourceExercise.supersetOrder = 0;
+                          }
+
+                          // Get next order number
+                          final existingInSuperset = _allExercises
+                              .where((e) => e.supersetId == supersetId)
+                              .toList();
+                          final nextOrder = existingInSuperset.length;
+
+                          targetExercise.supersetId = supersetId;
+                          targetExercise.supersetOrder = nextOrder;
+
+                          filterExercises();
+                          _saveExercises();
+                        });
+                        Navigator.of(context).pop();
+                      },
+                    );
+                  }),
+                ],
+
+                // Section: Join Existing Superset
+                if (existingSupersets.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Add to Existing Superset:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...existingSupersets.entries.map((entry) {
+                    final supersetExercises = entry.value;
+                    final exerciseNames = supersetExercises
+                        .map((e) => '${(e.supersetOrder ?? 0) + 1}. ${e.name}')
+                        .join(' → ');
+
+                    return ListTile(
+                      leading: const Icon(Icons.layers),
+                      title: Text('${supersetExercises.length} exercises'),
+                      subtitle: Text(
+                        exerciseNames,
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      onTap: () {
+                        setState(() {
+                          final nextOrder = supersetExercises.length;
+                          sourceExercise.supersetId = entry.key;
+                          sourceExercise.supersetOrder = nextOrder;
+                          filterExercises();
+                          _saveExercises();
+                        });
+                        Navigator.of(context).pop();
+                      },
+                    );
+                  }),
+                ],
+
+                // Show message if no options available
+                if (availableExercises.isEmpty && existingSupersets.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text(
+                      'No exercises available. All exercises are already in supersets.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _showExerciseOptionsDialog(Exercise exercise) async {
     return showDialog<void>(
       context: context,
@@ -631,6 +903,47 @@ class _MyHomePageState extends State<MyHomePage> {
 
                       if (remainingInGroup.length == 1) {
                         remainingInGroup.first.groupId = null;
+                      }
+
+                      filterExercises();
+                      _saveExercises();
+                    });
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.layers),
+                title: const Text('Create/Join Superset'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showLinkSupersetDialog(exercise);
+                },
+              ),
+              if (exercise.isPartOfSuperset)
+                ListTile(
+                  leading: const Icon(Icons.layers_clear),
+                  title: const Text('Remove from Superset'),
+                  onTap: () {
+                    setState(() {
+                      final oldSupersetId = exercise.supersetId;
+                      exercise.supersetId = null;
+                      exercise.supersetOrder = null;
+
+                      // Check if only 1 exercise remains in the superset
+                      final remainingInSuperset = _allExercises
+                          .where((e) => e.supersetId == oldSupersetId)
+                          .toList();
+
+                      if (remainingInSuperset.length == 1) {
+                        remainingInSuperset.first.supersetId = null;
+                        remainingInSuperset.first.supersetOrder = null;
+                      } else {
+                        // Reorder remaining exercises
+                        remainingInSuperset.sort((a, b) =>
+                            (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0));
+                        for (var i = 0; i < remainingInSuperset.length; i++) {
+                          remainingInSuperset[i].supersetOrder = i;
+                        }
                       }
 
                       filterExercises();
