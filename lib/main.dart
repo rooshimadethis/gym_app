@@ -369,6 +369,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 itemBuilder: (context, index) {
                   final exercise = _filteredExercises[index];
                   return Padding(
+                    key: ObjectKey(exercise),
                     padding: const EdgeInsets.symmetric(
                       vertical: 8.0,
                       horizontal: 16.0,

@@ -296,7 +296,11 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                             SizedBox(
                               width: 30,
                               child: Text(
-                                isWarmupSet ? 'W.' : '${index + 1}.',
+                                isWarmupSet
+                                    ? 'W.'
+                                    : _warmupSetEnabled
+                                    ? '$index.'
+                                    : '${index + 1}.',
                                 style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(
                                       color: isWarmupSet ? Colors.orange : null,
