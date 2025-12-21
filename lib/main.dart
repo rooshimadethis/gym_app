@@ -491,17 +491,23 @@ class _MyHomePageState extends State<MyHomePage> {
                         final supersetExercises = _getSupersetExercises(
                           supersetId,
                         );
-                        final nextIndex =
-                            (exercise.supersetOrder! + 1) %
-                            supersetExercises.length;
+
+                        final int maxOrder =
+                            supersetExercises.last.supersetOrder ?? 0;
+                        final int currentOrder = exercise.supersetOrder ?? 0;
+                        final bool isLast = currentOrder >= maxOrder;
+
+                        final int nextOrder = isLast ? 0 : currentOrder + 1;
+
+                        final nextExercises = supersetExercises
+                            .where((e) => e.supersetOrder == nextOrder)
+                            .toList();
+
                         return SupersetInfo(
-                          isLastInSuperset:
-                              exercise.supersetOrder ==
-                              supersetExercises.length - 1,
-                          nextExerciseName: supersetExercises[nextIndex].name,
-                          firstExerciseName: supersetExercises[0].name,
-                          totalExercises: supersetExercises.length,
-                          currentPosition: exercise.supersetOrder!,
+                          isLastInSuperset: isLast,
+                          nextExercises: nextExercises,
+                          totalExercises: maxOrder + 1,
+                          currentPosition: currentOrder,
                         );
                       },
                     );

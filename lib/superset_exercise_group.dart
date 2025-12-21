@@ -49,7 +49,10 @@ class SupersetExerciseGroup extends StatelessWidget {
         children: [
           // Superset header
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+            padding: const EdgeInsets.symmetric(
+              vertical: 8.0,
+              horizontal: 12.0,
+            ),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.secondary,
               borderRadius: const BorderRadius.only(
@@ -100,7 +103,9 @@ class SupersetExerciseGroup extends StatelessWidget {
                           shape: BoxShape.circle,
                           color: currentExerciseIndex == position
                               ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.surfaceContainerHighest,
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHighest,
                         ),
                         child: Center(
                           child: Text(
@@ -108,7 +113,9 @@ class SupersetExerciseGroup extends StatelessWidget {
                             style: TextStyle(
                               color: currentExerciseIndex == position
                                   ? Theme.of(context).colorScheme.onPrimary
-                                  : Theme.of(context).colorScheme.onSurfaceVariant,
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
@@ -125,19 +132,21 @@ class SupersetExerciseGroup extends StatelessWidget {
                                 onExerciseCompleted: onExerciseCompleted,
                                 onLongPress: onLongPress,
                                 onTap: onTap,
+                                getSupersetInfo: getSupersetInfo,
                               )
                             : ExerciseCard(
                                 exercise: exercisesAtPosition[0],
                                 onExerciseCompleted: () =>
                                     onExerciseCompleted(exercisesAtPosition[0]),
-                                onLongPress: () => onLongPress(exercisesAtPosition[0]),
+                                onLongPress: () =>
+                                    onLongPress(exercisesAtPosition[0]),
                                 onTap: onTap,
                                 onSupersetProgress: onSupersetProgress != null
-                                    ? () => onSupersetProgress!(exercisesAtPosition[0])
+                                    ? () => onSupersetProgress!(
+                                        exercisesAtPosition[0],
+                                      )
                                     : null,
-                                getSupersetInfo: getSupersetInfo != null
-                                    ? () => getSupersetInfo!(exercisesAtPosition[0])
-                                    : null,
+                                getSupersetInfo: getSupersetInfo,
                               ),
                       ),
                     ],

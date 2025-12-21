@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:gym_app/exercise_card.dart';
 import 'package:gym_app/models.dart';
+import 'package:gym_app/exercise_detail_view.dart';
 
 class AlternativeExerciseGroup extends StatelessWidget {
   final List<Exercise> alternatives;
   final Function(Exercise) onExerciseCompleted;
   final Function(Exercise) onLongPress;
   final VoidCallback onTap;
+  final SupersetInfo Function(Exercise)? getSupersetInfo;
 
   const AlternativeExerciseGroup({
     super.key,
@@ -14,6 +16,7 @@ class AlternativeExerciseGroup extends StatelessWidget {
     required this.onExerciseCompleted,
     required this.onLongPress,
     required this.onTap,
+    this.getSupersetInfo,
   });
 
   @override
@@ -37,6 +40,7 @@ class AlternativeExerciseGroup extends StatelessWidget {
                 onExerciseCompleted: () => onExerciseCompleted(exercise),
                 onLongPress: () => onLongPress(exercise),
                 onTap: onTap,
+                getSupersetInfo: getSupersetInfo,
               ),
             ),
           );

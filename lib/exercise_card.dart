@@ -11,7 +11,7 @@ class ExerciseCard extends StatefulWidget {
   final VoidCallback onLongPress;
   final VoidCallback onTap;
   final VoidCallback? onSupersetProgress;
-  final SupersetInfo Function()? getSupersetInfo;
+  final SupersetInfo Function(Exercise)? getSupersetInfo;
 
   const ExerciseCard({
     super.key,
@@ -41,9 +41,10 @@ class _ExerciseCardState extends State<ExerciseCard>
       duration: const Duration(milliseconds: 100),
     );
 
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -121,7 +122,8 @@ class _ExerciseCardState extends State<ExerciseCard>
                     child: Column(
                       children: [
                         Expanded(
-                          child: widget.exercise.hasLocalImage &&
+                          child:
+                              widget.exercise.hasLocalImage &&
                                   widget.exercise.imageUrl != null
                               ? Image.asset(
                                   widget.exercise.imageUrl!,
@@ -142,13 +144,12 @@ class _ExerciseCardState extends State<ExerciseCard>
                           padding: const EdgeInsets.all(16.0),
                           child: Text(
                             widget.exercise.name,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
+                            style: Theme.of(context).textTheme.headlineSmall
                                 ?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  color:
-                                      Theme.of(context).colorScheme.onPrimary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
                                 ),
                           ),
                         ),

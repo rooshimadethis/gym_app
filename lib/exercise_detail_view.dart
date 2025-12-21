@@ -10,15 +10,13 @@ import 'dart:io';
 
 class SupersetInfo {
   final bool isLastInSuperset;
-  final String nextExerciseName;
-  final String firstExerciseName;
+  final List<Exercise> nextExercises;
   final int totalExercises;
   final int currentPosition;
 
   SupersetInfo({
     required this.isLastInSuperset,
-    required this.nextExerciseName,
-    required this.firstExerciseName,
+    required this.nextExercises,
     required this.totalExercises,
     required this.currentPosition,
   });
@@ -28,7 +26,7 @@ class ExerciseDetailView extends StatefulWidget {
   final Exercise exercise;
   final VoidCallback onExerciseCompleted;
   final VoidCallback? onSupersetProgress;
-  final SupersetInfo Function()? getSupersetInfo;
+  final SupersetInfo Function(Exercise)? getSupersetInfo;
 
   const ExerciseDetailView({
     super.key,
@@ -224,6 +222,9 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
       FocusScope.of(context).requestFocus(_repsFocusNodes[_lastFocusedSet + 1]);
     }
 
+    // Save changes (including prefill) to the model immediately
+    _saveData();
+
     // Check if exercise is part of superset
     if (widget.exercise.isPartOfSuperset && widget.getSupersetInfo != null) {
       _handleSupersetLogSet();
@@ -233,7 +234,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
   }
 
   void _handleSupersetLogSet() {
-    final supersetInfo = widget.getSupersetInfo!();
+    final supersetInfo = widget.getSupersetInfo!(widget.exercise);
 
     if (supersetInfo.isLastInSuperset) {
       // Last exercise in superset -> Show rest timer, THEN "Next Exercise" back to first
@@ -255,39 +256,70 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
     ).then((_) {
       // After rest timer, show next exercise modal pointing to first exercise
       if (!mounted) return;
-      showDialog(
+      showDialog<Exercise>(
         context: context,
         barrierDismissible: false,
         builder: (context) => NextExerciseModal(
-          nextExerciseName: info.firstExerciseName,
+          nextExercises: info.nextExercises,
           currentExerciseName: widget.exercise.name,
           currentPosition: info.currentPosition,
           totalExercises: info.totalExercises,
         ),
-      ).then((_) {
+      ).then((selectedExercise) {
         // NOW call onExerciseCompleted to cycle superset to bottom
         widget.onExerciseCompleted();
+
+        if (mounted && selectedExercise != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ExerciseDetailView(
+                exercise: selectedExercise,
+                onExerciseCompleted: widget.onExerciseCompleted,
+                onSupersetProgress: widget.onSupersetProgress,
+                getSupersetInfo: widget.getSupersetInfo,
+              ),
+            ),
+          );
+        } else if (mounted) {
+          Navigator.pop(context);
+        }
       });
     });
   }
 
   void _showNextExerciseModal(SupersetInfo info) {
-    showDialog(
+    showDialog<Exercise>(
       context: context,
       barrierDismissible: false,
       builder: (context) => NextExerciseModal(
-        nextExerciseName: info.nextExerciseName,
+        nextExercises: info.nextExercises,
         currentExerciseName: widget.exercise.name,
         currentPosition: info.currentPosition,
         totalExercises: info.totalExercises,
       ),
-    ).then((_) {
+    ).then((selectedExercise) {
       // Update progress but DON'T call onExerciseCompleted yet
       if (widget.onSupersetProgress != null) {
         widget.onSupersetProgress!();
       }
+
       if (mounted) {
-        Navigator.pop(context); // Close detail view
+        if (selectedExercise != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ExerciseDetailView(
+                exercise: selectedExercise,
+                onExerciseCompleted: widget.onExerciseCompleted,
+                onSupersetProgress: widget.onSupersetProgress,
+                getSupersetInfo: widget.getSupersetInfo,
+              ),
+            ),
+          );
+        } else {
+          Navigator.pop(context); // Close detail view
+        }
       }
     });
   }
