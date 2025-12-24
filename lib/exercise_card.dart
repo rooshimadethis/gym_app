@@ -73,20 +73,20 @@ class _ExerciseCardState extends State<ExerciseCard>
           ),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
               spreadRadius: 1,
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               spreadRadius: 0,
               blurRadius: 5,
               offset: const Offset(0, 2),
             ),
           ],
           border: Border.all(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -161,7 +161,7 @@ class _ExerciseCardState extends State<ExerciseCard>
                               end: Alignment.bottomCenter,
                               colors: [
                                 Colors.transparent,
-                                Colors.black.withOpacity(0.8),
+                                Colors.black.withValues(alpha: 0.8),
                               ],
                               stops: const [0.5, 1.0],
                             ),
@@ -190,7 +190,7 @@ class _ExerciseCardState extends State<ExerciseCard>
                             padding: const EdgeInsets.all(12.0),
                             child: Icon(
                               Icons.fitness_center, // Placeholder icon
-                              color: Colors.white.withOpacity(0.5),
+                              color: Colors.white.withValues(alpha: 0.5),
                               size: 24,
                             ),
                           ),

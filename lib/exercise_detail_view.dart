@@ -413,7 +413,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                                     color: Colors.white,
                                     shadows: [
                                       Shadow(
-                                        color: Colors.black.withOpacity(0.5),
+                                         color: Colors.black.withValues(alpha: 0.5),
                                         blurRadius: 10,
                                       ),
                                     ],
@@ -436,12 +436,12 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                       child: Container(
                         decoration: BoxDecoration(
                           color: isWarmupSet
-                              ? Colors.orange.withOpacity(0.1)
+                              ? Colors.orange.withValues(alpha: 0.1)
                               : Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(12.0),
                           border: isWarmupSet
                               ? Border.all(
-                                  color: Colors.orange.withOpacity(0.5))
+                                  color: Colors.orange.withValues(alpha: 0.5))
                               : null,
                         ),
                         padding: const EdgeInsets.all(12.0),
@@ -554,7 +554,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 10,
                   offset: const Offset(0, -5),
                 ),
