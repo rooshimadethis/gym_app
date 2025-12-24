@@ -349,7 +349,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: IconThemeData(
-          color: Theme.of(context).colorScheme.onPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
         leading: BackButton(
           onPressed: () {
@@ -367,27 +367,60 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                 SliverToBoxAdapter(
                   child: Column(
                     children: [
-                      widget.exercise.hasLocalImage &&
-                              widget.exercise.imageUrl != null
-                          ? Image.asset(
-                              widget.exercise.imageUrl!,
-                              fit: BoxFit.cover,
-                            )
-                          : CachedNetworkImage(
-                              imageUrl: placeHolderImageUrl,
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) =>
-                                  Container(color: Colors.grey[300]),
-                              errorWidget: (context, url, error) =>
-                                  const Icon(Icons.error),
+                      // Header Image with Gradient
+                      Stack(
+                        alignment: Alignment.bottomLeft,
+                        children: [
+                          AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: widget.exercise.hasLocalImage &&
+                                    widget.exercise.imageUrl != null
+                                ? Image.asset(
+                                    widget.exercise.imageUrl!,
+                                    fit: BoxFit.cover,
+                                  )
+                                : CachedNetworkImage(
+                                    imageUrl: placeHolderImageUrl,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) =>
+                                        Container(color: Colors.grey[900]),
+                                    errorWidget: (context, url, error) =>
+                                        const Icon(Icons.error),
+                                  ),
+                          ),
+                          Container(
+                            height: 100,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Theme.of(context).scaffoldBackgroundColor,
+                                ],
+                              ),
                             ),
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          widget.exercise.name,
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child: Text(
+                              widget.exercise.name,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black.withOpacity(0.5),
+                                        blurRadius: 10,
+                                      ),
+                                    ],
+                                  ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -401,89 +434,88 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                         vertical: 8.0,
                       ),
                       child: Container(
-                        decoration: isWarmupSet
-                            ? BoxDecoration(
-                                color: Colors.orange.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8.0),
-                                border: Border.all(
-                                  color: Colors.orange.withValues(alpha: 0.3),
-                                ),
-                              )
-                            : null,
-                        padding: isWarmupSet
-                            ? const EdgeInsets.all(8.0)
-                            : EdgeInsets.zero,
+                        decoration: BoxDecoration(
+                          color: isWarmupSet
+                              ? Colors.orange.withOpacity(0.1)
+                              : Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(12.0),
+                          border: isWarmupSet
+                              ? Border.all(
+                                  color: Colors.orange.withOpacity(0.5))
+                              : null,
+                        ),
+                        padding: const EdgeInsets.all(12.0),
                         child: Row(
                           children: [
                             SizedBox(
-                              width: 30,
+                              width: 40,
                               child: Text(
                                 isWarmupSet
-                                    ? 'W.'
+                                    ? 'W'
                                     : _warmupSetEnabled
-                                    ? '$index.'
-                                    : '${index + 1}.',
-                                style: Theme.of(context).textTheme.titleMedium
+                                        ? '$index'
+                                        : '${index + 1}',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
                                     ?.copyWith(
-                                      color: isWarmupSet ? Colors.orange : null,
-                                      fontWeight: isWarmupSet
-                                          ? FontWeight.bold
-                                          : null,
+                                      color: isWarmupSet
+                                          ? Colors.orange
+                                          : Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                      fontWeight: FontWeight.bold,
                                     ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
+                            const SizedBox(width: 12.0),
                             Expanded(
                               child: TextField(
                                 controller: _weightControllers[index],
                                 focusNode: _weightFocusNodes[index],
                                 decoration: InputDecoration(
                                   labelText: 'Weight',
-                                  border: const OutlineInputBorder(),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
+                                  filled: true,
+                                  fillColor: Theme.of(context)
+                                      .scaffoldBackgroundColor,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    borderSide: BorderSide.none,
                                   ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
                                 ),
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
+                                        decimal: true),
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d+\.?\d{0,1}'),
-                                  ),
+                                      RegExp(r'^\d+\.?\d{0,1}')),
                                   LengthLimitingTextInputFormatter(5),
                                 ],
                                 onSubmitted: (_) {
-                                  FocusScope.of(
-                                    context,
-                                  ).requestFocus(_repsFocusNodes[index]);
+                                  FocusScope.of(context)
+                                      .requestFocus(_repsFocusNodes[index]);
                                 },
                               ),
                             ),
-                            const SizedBox(width: 8.0),
-                            Text(
-                              'x',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(width: 8.0),
+                            const SizedBox(width: 12.0),
                             Expanded(
                               child: TextField(
                                 controller: _repsControllers[index],
                                 focusNode: _repsFocusNodes[index],
                                 decoration: InputDecoration(
                                   labelText: 'Reps',
-                                  border: const OutlineInputBorder(),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
+                                  filled: true,
+                                  fillColor: Theme.of(context)
+                                      .scaffoldBackgroundColor,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    borderSide: BorderSide.none,
                                   ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
                                 ),
                                 keyboardType: TextInputType.number,
                                 inputFormatters: [
@@ -492,13 +524,13 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                                 ],
                                 onSubmitted: (_) {
                                   HapticFeedback.mediumImpact();
-                                  _saveData(); // Save current data
+                                  _saveData();
                                   if (index ==
                                       widget.exercise.sets.length - 1) {
                                     widget.onExerciseCompleted();
-                                    Navigator.pop(context); // Finish exercise
+                                    Navigator.pop(context);
                                   } else {
-                                    _logSet(); // Log set and move to next
+                                    _logSet();
                                   }
                                 },
                               ),
@@ -509,58 +541,98 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                     );
                   }, childCount: widget.exercise.sets.length),
                 ),
+                SliverToBoxAdapter(
+                  child: SizedBox(height: 80), // Padding for bottom buttons
+                ),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _removeSet,
-                  icon: const Icon(Icons.remove),
-                  label: const Text('Remove Set'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
-                  ),
+          Container(
+            padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
                 ),
-                const SizedBox(width: 16),
-                ElevatedButton.icon(
-                  onPressed: _addSet,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Set'),
+              ],
+            ),
+            child: Column(
+              children: [
+                 Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _removeSet,
+                        icon: const Icon(Icons.remove),
+                        label: const Text('Set'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor:
+                              Theme.of(context).colorScheme.secondary,
+                          side: BorderSide(
+                              color: Theme.of(context).colorScheme.secondary),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _addSet,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Set'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor:
+                              Theme.of(context).colorScheme.primary,
+                          side: BorderSide(
+                              color: Theme.of(context).colorScheme.primary),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    HapticFeedback.mediumImpact();
+                    _saveData();
+                    if (isLastSetFocused) {
+                      widget.onExerciseCompleted();
+                      Navigator.pop(context);
+                    } else {
+                      _logSet();
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    minimumSize: const Size(double.infinity, 56),
+                    elevation: 5,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    isLastSetFocused ? 'FINISH EXERCISE' : 'LOG SET',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.0,
+                    ),
                   ),
                 ),
               ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
-              onPressed: () {
-                HapticFeedback.mediumImpact();
-                _saveData();
-                if (isLastSetFocused) {
-                  widget.onExerciseCompleted();
-                  Navigator.pop(context);
-                } else {
-                  _logSet();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: Text(isLastSetFocused ? 'Finish Exercise' : 'Log Set'),
             ),
           ),
         ],
