@@ -36,12 +36,15 @@ class SupersetExerciseGroup extends StatelessWidget {
     final sortedPositions = positionGroups.keys.toList()..sort();
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15.0),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(28.0),
         border: Border.all(
-          color: Theme.of(context).colorScheme.secondary,
-          width: 2,
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+          width: 1.5,
         ),
       ),
       child: Column(
@@ -50,31 +53,34 @@ class SupersetExerciseGroup extends StatelessWidget {
           // Superset header
           Container(
             padding: const EdgeInsets.symmetric(
-              vertical: 8.0,
-              horizontal: 12.0,
+              vertical: 10.0,
+              horizontal: 16.0,
             ),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.secondary,
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(13.0),
-                topRight: Radius.circular(13.0),
+                topLeft: Radius.circular(26.0),
+                topRight: Radius.circular(26.0),
               ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  Icons.link,
-                  color: Theme.of(context).colorScheme.onSecondary,
-                  size: 16,
+                  Icons.auto_awesome_motion_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 18,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'SUPERSET',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSecondary,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                    fontSize: 12,
                   ),
                 ),
               ],
@@ -91,38 +97,44 @@ class SupersetExerciseGroup extends StatelessWidget {
             return Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(12.0),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // Position indicator
                       Container(
-                        width: 32,
-                        height: 32,
+                        width: 36,
+                        height: 36,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: currentExerciseIndex == position
                               ? Theme.of(context).colorScheme.primary
-                              : Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerHighest,
+                              : Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
+                          border: Border.all(
+                            color: currentExerciseIndex == position
+                                ? Colors.transparent
+                                : Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.1),
+                          ),
                         ),
                         child: Center(
                           child: Text(
                             '${position + 1}',
                             style: TextStyle(
                               color: currentExerciseIndex == position
-                                  ? Theme.of(context).colorScheme.onPrimary
-                                  : Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
+                                  ? Colors.white
+                                  : Theme.of(context).colorScheme.onSurface
+                                        .withValues(alpha: 0.7),
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 16),
 
                       // Exercise card(s)
                       Expanded(
@@ -156,14 +168,20 @@ class SupersetExerciseGroup extends StatelessWidget {
                 // Connecting line (except for last exercise)
                 if (!isLast)
                   Container(
-                    margin: const EdgeInsets.only(left: 27),
+                    margin: const EdgeInsets.only(left: 33),
                     width: 2,
-                    height: 16,
-                    color: Theme.of(context).colorScheme.secondary,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(1),
+                    ),
                   ),
               ],
             );
           }),
+          const SizedBox(height: 8),
         ],
       ),
     );

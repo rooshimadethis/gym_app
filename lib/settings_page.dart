@@ -188,49 +188,160 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: const Text('Settings'), centerTitle: true),
       body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 20),
         children: [
-          ListTile(
-            leading: const Icon(Icons.file_upload),
-            title: const Text('Import Exercise Data'),
+          _buildSectionHeader('Data Management'),
+          _buildSettingTile(
+            icon: Icons.file_upload_outlined,
+            title: 'Import Exercise Data',
             onTap: _importExerciseData,
           ),
-          ListTile(
-            leading: const Icon(Icons.file_download),
-            title: const Text('Export Exercise Data'),
+          _buildSettingTile(
+            icon: Icons.file_download_outlined,
+            title: 'Export Exercise Data',
             onTap: _exportExerciseData,
           ),
+          const SizedBox(height: 24),
+          _buildSectionHeader('Preferences'),
           SwitchListTile(
-            title: const Text('Enable Rest Timer Notifications'),
+            title: const Text(
+              'Notifications',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: const Text('Rest timer background alerts'),
             value: _notificationsEnabled,
             onChanged: _saveNotificationSetting,
-            secondary: const Icon(Icons.notifications),
+            secondary: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.notifications_outlined,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
           ),
           SwitchListTile(
-            title: const Text('Enable Warmup Set'),
-            subtitle: const Text(
-              'First set won\'t auto-fill the next set with weight/reps',
+            title: const Text(
+              'Warmup Set',
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
+            subtitle: const Text('Skip auto-fill for the first set'),
             value: _warmupSetEnabled,
             onChanged: _saveWarmupSetSetting,
-            secondary: const Icon(Icons.fitness_center),
-          ),
-          ListTile(
-            leading: const Icon(Icons.timer),
-            title: const Text('Rest Timer Notification (seconds)'),
-            subtitle: TextField(
-              controller: _timerController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              onChanged: _saveTimerDuration,
-              decoration: const InputDecoration(
-                labelText: 'Duration in seconds',
+            secondary: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
               ),
+              child: Icon(
+                Icons.fitness_center_outlined,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildSectionHeader('Timer Configuration'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.timer_outlined,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Text(
+                    'Rest Duration (seconds)',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: _timerController,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    onChanged: _saveTimerDuration,
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+          color: Theme.of(context).colorScheme.primary,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Theme.of(
+            context,
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: Colors.white70),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+      trailing: const Icon(
+        Icons.chevron_right,
+        size: 20,
+        color: Colors.white24,
+      ),
+      onTap: onTap,
     );
   }
 }

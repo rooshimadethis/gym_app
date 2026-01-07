@@ -345,27 +345,22 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
     final isLastSetFocused = _lastFocusedSet == widget.exercise.sets.length - 1;
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: IconThemeData(
-          color: Theme.of(context).colorScheme.onPrimary,
-        ),
-        leading: BackButton(
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            _saveData();
-            Navigator.pop(context);
-          },
-        ),
-      ),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Column(
+          CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                expandedHeight: 250,
+                pinned: true,
+                stretch: true,
+                backgroundColor: const Color(0xFF0A0A0A),
+                flexibleSpace: FlexibleSpaceBar(
+                  stretchModes: const [
+                    StretchMode.zoomBackground,
+                    StretchMode.blurBackground,
+                  ],
+                  background: Stack(
+                    fit: StackFit.expand,
                     children: [
                       widget.exercise.hasLocalImage &&
                               widget.exercise.imageUrl != null
@@ -376,131 +371,228 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                           : CachedNetworkImage(
                               imageUrl: placeHolderImageUrl,
                               fit: BoxFit.cover,
-                              placeholder: (context, url) =>
-                                  Container(color: Colors.grey[300]),
-                              errorWidget: (context, url, error) =>
-                                  const Icon(Icons.error),
+                              placeholder: (context, url) => Container(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHighest,
+                              ),
                             ),
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          widget.exercise.name,
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                      const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.transparent, Color(0xFF0A0A0A)],
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                SliverList(
+                leading: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: CircleAvatar(
+                    backgroundColor: Colors.black.withValues(alpha: 0.5),
+                    child: BackButton(
+                      color: Colors.white,
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        _saveData();
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Text(
+                          widget.exercise.name,
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.exercise.isPartOfSuperset
+                            ? 'Part of a Superset'
+                            : 'Strength Training',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                sliver: SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final isWarmupSet = _warmupSetEnabled && index == 0;
                     return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0,
-                        vertical: 8.0,
-                      ),
+                      padding: const EdgeInsets.only(bottom: 12.0),
                       child: Container(
-                        decoration: isWarmupSet
-                            ? BoxDecoration(
-                                color: Colors.orange.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8.0),
-                                border: Border.all(
-                                  color: Colors.orange.withValues(alpha: 0.3),
-                                ),
-                              )
-                            : null,
-                        padding: isWarmupSet
-                            ? const EdgeInsets.all(8.0)
-                            : EdgeInsets.zero,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isWarmupSet
+                              ? Colors.orange.withValues(alpha: 0.1)
+                              : Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest
+                                    .withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isWarmupSet
+                                ? Colors.orange.withValues(alpha: 0.3)
+                                : Colors.white.withValues(alpha: 0.05),
+                          ),
+                        ),
                         child: Row(
                           children: [
-                            SizedBox(
-                              width: 30,
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: isWarmupSet
+                                    ? Colors.orange
+                                    : Theme.of(context).colorScheme.primary
+                                          .withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
                               child: Text(
                                 isWarmupSet
-                                    ? 'W.'
-                                    : _warmupSetEnabled
-                                    ? '$index.'
-                                    : '${index + 1}.',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(
-                                      color: isWarmupSet ? Colors.orange : null,
-                                      fontWeight: isWarmupSet
-                                          ? FontWeight.bold
-                                          : null,
-                                    ),
+                                    ? 'W'
+                                    : '${index + (_warmupSetEnabled ? 0 : 1)}',
+                                style: TextStyle(
+                                  color: isWarmupSet
+                                      ? Colors.white
+                                      : Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
+                            const SizedBox(width: 16),
                             Expanded(
-                              child: TextField(
-                                controller: _weightControllers[index],
-                                focusNode: _weightFocusNodes[index],
-                                decoration: InputDecoration(
-                                  labelText: 'Weight',
-                                  border: const OutlineInputBorder(),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
+                              flex: 3,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'WEIGHT',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey,
                                     ),
                                   ),
-                                ),
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
+                                  TextField(
+                                    controller: _weightControllers[index],
+                                    focusNode: _weightFocusNodes[index],
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d+\.?\d{0,1}'),
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      border: InputBorder.none,
+                                      hintText: '0',
+                                    ),
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(
+                                        RegExp(r'^\d+\.?\d{0,1}'),
+                                      ),
+                                      LengthLimitingTextInputFormatter(5),
+                                    ],
+                                    onSubmitted: (_) => FocusScope.of(
+                                      context,
+                                    ).requestFocus(_repsFocusNodes[index]),
                                   ),
-                                  LengthLimitingTextInputFormatter(5),
                                 ],
-                                onSubmitted: (_) {
-                                  FocusScope.of(
-                                    context,
-                                  ).requestFocus(_repsFocusNodes[index]);
-                                },
                               ),
                             ),
-                            const SizedBox(width: 8.0),
-                            Text(
-                              'x',
-                              style: Theme.of(context).textTheme.titleMedium,
+                            const Text(
+                              '×',
+                              style: TextStyle(
+                                fontSize: 24,
+                                color: Colors.grey,
+                              ),
                             ),
-                            const SizedBox(width: 8.0),
+                            const SizedBox(width: 16),
                             Expanded(
-                              child: TextField(
-                                controller: _repsControllers[index],
-                                focusNode: _repsFocusNodes[index],
-                                decoration: InputDecoration(
-                                  labelText: 'Reps',
-                                  border: const OutlineInputBorder(),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
+                              flex: 2,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'REPS',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey,
                                     ),
                                   ),
-                                ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                  LengthLimitingTextInputFormatter(2),
+                                  TextField(
+                                    controller: _repsControllers[index],
+                                    focusNode: _repsFocusNodes[index],
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      border: InputBorder.none,
+                                      hintText: '0',
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                      LengthLimitingTextInputFormatter(2),
+                                    ],
+                                    onSubmitted: (_) {
+                                      HapticFeedback.mediumImpact();
+                                      _saveData();
+                                      if (index ==
+                                          widget.exercise.sets.length - 1) {
+                                        widget.onExerciseCompleted();
+                                        Navigator.pop(context);
+                                      } else {
+                                        _logSet();
+                                      }
+                                    },
+                                  ),
                                 ],
-                                onSubmitted: (_) {
-                                  HapticFeedback.mediumImpact();
-                                  _saveData(); // Save current data
-                                  if (index ==
-                                      widget.exercise.sets.length - 1) {
-                                    widget.onExerciseCompleted();
-                                    Navigator.pop(context); // Finish exercise
-                                  } else {
-                                    _logSet(); // Log set and move to next
-                                  }
-                                },
                               ),
                             ),
                           ],
@@ -509,58 +601,101 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                     );
                   }, childCount: widget.exercise.sets.length),
                 ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _removeSet,
-                  icon: const Icon(Icons.remove),
-                  label: const Text('Remove Set'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                ElevatedButton.icon(
-                  onPressed: _addSet,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Set'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
-              onPressed: () {
-                HapticFeedback.mediumImpact();
-                _saveData();
-                if (isLastSetFocused) {
-                  widget.onExerciseCompleted();
-                  Navigator.pop(context);
-                } else {
-                  _logSet();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                minimumSize: const Size(double.infinity, 50),
               ),
-              child: Text(isLastSetFocused ? 'Finish Exercise' : 'Log Set'),
+            ],
+          ),
+          // Bottom Controls
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFF0A0A0A).withValues(alpha: 0.0),
+                    const Color(0xFF0A0A0A),
+                  ],
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _removeSet,
+                          icon: const Icon(Icons.remove),
+                          label: const Text('REMOVE SET'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white70,
+                            side: const BorderSide(color: Colors.white24),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _addSet,
+                          icon: const Icon(Icons.add),
+                          label: const Text('ADD SET'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        HapticFeedback.mediumImpact();
+                        _saveData();
+                        if (isLastSetFocused) {
+                          widget.onExerciseCompleted();
+                          Navigator.pop(context);
+                        } else {
+                          _logSet();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        isLastSetFocused ? 'FINISH EXERCISE' : 'LOG SET',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

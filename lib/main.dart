@@ -33,37 +33,56 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'rooshi\'s get swole',
       theme: ThemeData(
-        fontFamily: 'StackSansText',
-        colorScheme: const ColorScheme(
-          brightness: Brightness.light,
-          primary: Color(0xFF4C763B),
-          onPrimary: Colors.white,
-          secondary: Color(0xFF77A26D),
-          onSecondary: Color(0xFF212121),
-          error: Colors.red,
-          onError: Colors.white,
-          surface: Color(0xFFFAFAFA),
-          onSurface: Color(0xFF212121),
-        ),
         useMaterial3: true,
+        fontFamily: 'StackSansText',
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF4C763B),
+          brightness: Brightness.light,
+          primary: const Color(0xFF4C763B),
+          surface: const Color(0xFFF8F9FA),
+        ),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          color: Colors.white,
+        ),
       ),
       darkTheme: ThemeData(
-        fontFamily: 'StackSansText',
-        colorScheme: const ColorScheme(
-          brightness: Brightness.dark,
-          primary: Color(0xFF4C763B),
-          onPrimary: Colors.white,
-          secondary: Color(0xFF77A26D),
-          onSecondary: Color(0xFF212121),
-          error: Colors.red,
-          onError: Colors.white,
-          surface: Color(0xFF212121),
-          onSurface: Colors.white,
-        ),
         useMaterial3: true,
+        fontFamily: 'StackSansText',
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF77A26D),
+          brightness: Brightness.dark,
+          primary: const Color(0xFF77A26D),
+          surface: const Color(0xFF121212),
+          onSurface: Colors.white,
+          surfaceContainerHighest: const Color(0xFF1E1E1E),
+        ),
+        scaffoldBackgroundColor: const Color(0xFF0A0A0A),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: false,
+          titleTextStyle: TextStyle(
+            fontFamily: 'StackSansText',
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+            color: Colors.white,
+          ),
+        ),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          color: const Color(0xFF1A1A1A),
+        ),
       ),
       themeMode: ThemeMode.dark,
-      home: const MyHomePage(title: 'rooshi\'s get swole'),
+      home: const MyHomePage(title: 'get swole'),
     );
   }
 }
@@ -404,30 +423,41 @@ class _MyHomePageState extends State<MyHomePage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: const Color(0xFF212121),
-          title: Text(
-            widget.title,
-            style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
-          ),
+          title: Text(widget.title),
           actions: [
             if (_isWorkoutTimerRunning)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
-                  child: Text(
-                    _formatWorkoutTime(_workoutStopwatch.elapsedMilliseconds),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      fontSize: 18,
-                    ),
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Text(
+                  _formatWorkoutTime(_workoutStopwatch.elapsedMilliseconds),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ),
             IconButton(
-              icon: Icon(
-                Icons.settings,
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
+              icon: const Icon(Icons.add_circle_outline),
+              onPressed: _showAddExerciseDialog,
+            ),
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
               onPressed: () async {
                 await Navigator.push(
                   context,
@@ -436,42 +466,62 @@ class _MyHomePageState extends State<MyHomePage> {
                 _loadExercises();
               },
             ),
-            IconButton(
-              icon: Icon(
-                Icons.add,
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
-              onPressed: _showAddExerciseDialog,
-            ),
+            const SizedBox(width: 8),
           ],
         ),
         body: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  labelText: 'Search',
-                  border: OutlineInputBorder(),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  style: const TextStyle(fontSize: 16),
+                  decoration: InputDecoration(
+                    hintText: 'Search exercises...',
+                    hintStyle: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search,
                       color: Theme.of(context).colorScheme.primary,
                     ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 15,
+                    ),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 20),
+                            onPressed: () {
+                              _searchController.clear();
+                              filterExercises();
+                            },
+                          )
+                        : null,
                   ),
                 ),
               ),
             ),
             Expanded(
               child: ListView.builder(
+                padding: const EdgeInsets.only(bottom: 32),
+                physics: const BouncingScrollPhysics(),
                 itemCount: _getDisplayGroups().length,
                 itemBuilder: (context, index) {
                   final group = _getDisplayGroups()[index];
 
-                  // Check if this is a superset
+                  Widget item;
                   if (group.isNotEmpty && group[0].isPartOfSuperset) {
                     final supersetId = group[0].supersetId!;
-                    return SupersetExerciseGroup(
+                    item = SupersetExerciseGroup(
                       key: ObjectKey(supersetId),
                       supersetExercises: group,
                       onExerciseCompleted: (exercise) {
@@ -512,9 +562,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       },
                     );
                   } else if (group.length == 1) {
-                    // Single exercise - render as before
                     final exercise = group[0];
-                    return Padding(
+                    item = Padding(
                       key: ObjectKey(exercise),
                       padding: const EdgeInsets.symmetric(
                         vertical: 8.0,
@@ -534,8 +583,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     );
                   } else {
-                    // Alternative group - render horizontal scroll
-                    return Padding(
+                    item = Padding(
                       key: ObjectKey(group[0].groupId),
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
                       child: AlternativeExerciseGroup(
@@ -553,6 +601,22 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     );
                   }
+
+                  return TweenAnimationBuilder<double>(
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeOutQuart,
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    child: item,
+                    builder: (context, value, child) {
+                      return Opacity(
+                        opacity: value,
+                        child: Transform.translate(
+                          offset: Offset(0, 50 * (1 - value)),
+                          child: child,
+                        ),
+                      );
+                    },
+                  );
                 },
               ),
             ),
