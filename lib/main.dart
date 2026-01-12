@@ -15,6 +15,8 @@ import 'package:gym_app/services/stopwatch_task_handler.dart';
 import 'package:gym_app/database/database.dart';
 import 'package:gym_app/services/workout_session_manager.dart';
 import 'package:gym_app/logic/priority_manager.dart';
+import 'package:gym_app/services/rest_timer_manager.dart';
+import 'package:gym_app/widgets/rest_timer_overlay.dart';
 
 late AppDatabase db;
 
@@ -27,6 +29,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   db = AppDatabase();
   await WorkoutSessionManager.instance.init();
+  await RestTimerManager.instance.init();
   await FlutterDisplayMode.setHighRefreshRate();
   FlutterForegroundTask.initCommunicationPort();
   runApp(const MyApp());
@@ -89,7 +92,12 @@ class MyApp extends StatelessWidget {
         ),
       ),
       themeMode: ThemeMode.dark,
-      home: const MyHomePage(title: 'get swole'),
+      home: const MyHomePage(title: 'rooshi\'s get swole'),
+      builder: (context, child) {
+        return Stack(
+          children: [if (child != null) child, const RestTimerOverlay()],
+        );
+      },
     );
   }
 }
@@ -107,9 +115,6 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Exercise> _allExercises = [];
   List<Exercise> _filteredExercises = [];
   final TextEditingController _searchController = TextEditingController();
-  final Stopwatch _workoutStopwatch = Stopwatch();
-  Timer? _workoutTimer;
-  bool _isWorkoutTimerRunning = false;
   Map<String, int> _supersetProgress =
       {}; // Track current position in each superset
 
@@ -347,35 +352,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void dispose() {
     _searchController.dispose();
-    _workoutTimer?.cancel();
     super.dispose();
-  }
-
-  void _startWorkoutTimer() {
-    setState(() {
-      _isWorkoutTimerRunning = true;
-    });
-    _workoutStopwatch.start();
-    _workoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {});
-    });
-  }
-
-  void _stopWorkoutTimer() {
-    setState(() {
-      _isWorkoutTimerRunning = false;
-    });
-    _workoutStopwatch.stop();
-    _workoutStopwatch.reset();
-    _workoutTimer?.cancel();
-  }
-
-  String _formatWorkoutTime(int milliseconds) {
-    int seconds = (milliseconds / 1000).truncate();
-    int minutes = (seconds / 60).truncate();
-    String minutesStr = (minutes % 60).toString().padLeft(2, '0');
-    String secondsStr = (seconds % 60).toString().padLeft(2, '0');
-    return '$minutesStr:$secondsStr';
   }
 
   Future<void> _showAddExerciseDialog() async {
@@ -447,33 +424,6 @@ class _MyHomePageState extends State<MyHomePage> {
         appBar: AppBar(
           title: Text(widget.title),
           actions: [
-            if (_isWorkoutTimerRunning)
-              Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Text(
-                  _formatWorkoutTime(_workoutStopwatch.elapsedMilliseconds),
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ),
             IconButton(
               icon: const Icon(Icons.add_circle_outline),
               onPressed: _showAddExerciseDialog,
@@ -570,14 +520,11 @@ class _MyHomePageState extends State<MyHomePage> {
                       supersetExercises: group,
                       onExerciseCompleted: (exercise) {
                         _moveExerciseToBottom(exercise);
-                        _workoutStopwatch.reset();
-                        if (!_isWorkoutTimerRunning) {
-                          _startWorkoutTimer();
-                        }
+                        RestTimerManager.instance.start();
                       },
                       onLongPress: (exercise) =>
                           _showExerciseOptionsDialog(exercise),
-                      onTap: () => _stopWorkoutTimer(),
+                      onTap: () {},
                       currentExerciseIndex: _supersetProgress[supersetId] ?? 0,
                       onSupersetProgress: (exercise) =>
                           _onSupersetProgress(exercise),
@@ -617,13 +564,10 @@ class _MyHomePageState extends State<MyHomePage> {
                         exercise: exercise,
                         onExerciseCompleted: () {
                           _moveExerciseToBottom(exercise);
-                          _workoutStopwatch.reset();
-                          if (!_isWorkoutTimerRunning) {
-                            _startWorkoutTimer();
-                          }
+                          RestTimerManager.instance.start();
                         },
                         onLongPress: () => _showExerciseOptionsDialog(exercise),
-                        onTap: () => _stopWorkoutTimer(),
+                        onTap: () {},
                       ),
                     );
                   } else {
@@ -634,14 +578,11 @@ class _MyHomePageState extends State<MyHomePage> {
                         alternatives: group,
                         onExerciseCompleted: (exercise) {
                           _moveExerciseToBottom(exercise);
-                          _workoutStopwatch.reset();
-                          if (!_isWorkoutTimerRunning) {
-                            _startWorkoutTimer();
-                          }
+                          RestTimerManager.instance.start();
                         },
                         onLongPress: (exercise) =>
                             _showExerciseOptionsDialog(exercise),
-                        onTap: () => _stopWorkoutTimer(),
+                        onTap: () {},
                       ),
                     );
                   }

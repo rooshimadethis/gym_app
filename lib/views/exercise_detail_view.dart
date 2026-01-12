@@ -2,7 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gym_app/models/models.dart';
-import 'package:gym_app/widgets/stopwatch_modal.dart';
+import 'package:gym_app/services/rest_timer_manager.dart';
 import 'package:gym_app/widgets/next_exercise_modal.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -320,42 +320,38 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
     _requestPermissions();
     _initService();
 
-    showDialog(
+    RestTimerManager.instance.start();
+
+    // Show next exercise modal pointing to first exercise immediately
+    if (!mounted) return;
+    showDialog<Exercise>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const StopwatchModal(),
-    ).then((_) {
-      // After rest timer, show next exercise modal pointing to first exercise
-      if (!mounted) return;
-      showDialog<Exercise>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => NextExerciseModal(
-          nextExercises: info.nextExercises,
-          currentExerciseName: widget.exercise.name,
-          currentPosition: info.currentPosition,
-          totalExercises: info.totalExercises,
-        ),
-      ).then((selectedExercise) {
-        // NOW call onExerciseCompleted to cycle superset to bottom
-        widget.onExerciseCompleted();
+      builder: (context) => NextExerciseModal(
+        nextExercises: info.nextExercises,
+        currentExerciseName: widget.exercise.name,
+        currentPosition: info.currentPosition,
+        totalExercises: info.totalExercises,
+      ),
+    ).then((selectedExercise) {
+      // NOW call onExerciseCompleted to cycle superset to bottom
+      widget.onExerciseCompleted();
 
-        if (mounted && selectedExercise != null) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ExerciseDetailView(
-                exercise: selectedExercise,
-                onExerciseCompleted: widget.onExerciseCompleted,
-                onSupersetProgress: widget.onSupersetProgress,
-                getSupersetInfo: widget.getSupersetInfo,
-              ),
+      if (mounted && selectedExercise != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ExerciseDetailView(
+              exercise: selectedExercise,
+              onExerciseCompleted: widget.onExerciseCompleted,
+              onSupersetProgress: widget.onSupersetProgress,
+              getSupersetInfo: widget.getSupersetInfo,
             ),
-          );
-        } else if (mounted) {
-          Navigator.pop(context);
-        }
-      });
+          ),
+        );
+      } else if (mounted) {
+        Navigator.pop(context);
+      }
     });
   }
 
@@ -399,14 +395,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
     _requestPermissions();
     _initService();
 
-    // Existing behavior for non-superset exercises
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const StopwatchModal();
-      },
-    ).then((_) => widget.onExerciseCompleted());
+    RestTimerManager.instance.start();
   }
 
   Future<void> _logHistory(double weight, int reps) async {
