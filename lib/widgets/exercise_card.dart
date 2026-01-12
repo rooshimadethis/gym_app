@@ -11,6 +11,7 @@ class ExerciseCard extends StatefulWidget {
   final VoidCallback onLongPress;
   final VoidCallback onTap;
   final VoidCallback? onSupersetProgress;
+  final int? supersetIndex;
   final SupersetInfo Function(Exercise)? getSupersetInfo;
 
   const ExerciseCard({
@@ -20,6 +21,7 @@ class ExerciseCard extends StatefulWidget {
     required this.onLongPress,
     required this.onTap,
     this.onSupersetProgress,
+    this.supersetIndex,
     this.getSupersetInfo,
   });
 
@@ -126,8 +128,8 @@ class _ExerciseCardState extends State<ExerciseCard>
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
+                            Colors.black.withValues(alpha: 0.2),
                             Colors.transparent,
-                            Colors.black.withValues(alpha: 0.0),
                             Colors.black.withValues(alpha: 0.5),
                             Colors.black.withValues(alpha: 0.9),
                           ],
@@ -170,32 +172,41 @@ class _ExerciseCardState extends State<ExerciseCard>
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              if (widget.exercise.sets.isNotEmpty)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    '${widget.exercise.sets.length} SETS',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ),
                             ],
                           ),
                         ],
                       ),
                     ),
+                    if (widget.supersetIndex != null)
+                      Positioned(
+                        top: 12,
+                        left: 12,
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Theme.of(context).colorScheme.primary,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${widget.supersetIndex}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     if (widget.exercise.isHighPriority)
                       Positioned(
                         top: 12,

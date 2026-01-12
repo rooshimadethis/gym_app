@@ -493,6 +493,7 @@ class _MyHomePageState extends State<MyHomePage> {
       },
       child: Scaffold(
         appBar: AppBar(
+          toolbarHeight: 80,
           title: Text(widget.title),
           actions: [
             IconButton(

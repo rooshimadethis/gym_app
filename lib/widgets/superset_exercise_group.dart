@@ -88,11 +88,8 @@ class SupersetExerciseGroup extends StatelessWidget {
           ),
 
           // Exercises
-          ...sortedPositions.asMap().entries.map((entry) {
-            final index = entry.key;
-            final position = entry.value;
+          ...sortedPositions.map((position) {
             final exercisesAtPosition = positionGroups[position]!;
-            final isLast = index == sortedPositions.length - 1;
 
             return Column(
               children: [
@@ -101,41 +98,6 @@ class SupersetExerciseGroup extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Position indicator
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: currentExerciseIndex == position
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest
-                                    .withValues(alpha: 0.5),
-                          border: Border.all(
-                            color: currentExerciseIndex == position
-                                ? Colors.transparent
-                                : Theme.of(context).colorScheme.onSurface
-                                      .withValues(alpha: 0.1),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${position + 1}',
-                            style: TextStyle(
-                              color: currentExerciseIndex == position
-                                  ? Colors.white
-                                  : Theme.of(context).colorScheme.onSurface
-                                        .withValues(alpha: 0.7),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-
                       // Exercise card(s)
                       Expanded(
                         child: exercisesAtPosition.length > 1
@@ -144,6 +106,8 @@ class SupersetExerciseGroup extends StatelessWidget {
                                 onExerciseCompleted: onExerciseCompleted,
                                 onLongPress: onLongPress,
                                 onTap: onTap,
+                                onSupersetProgress: onSupersetProgress,
+                                supersetIndex: position + 1,
                                 getSupersetInfo: getSupersetInfo,
                               )
                             : ExerciseCard(
@@ -158,6 +122,7 @@ class SupersetExerciseGroup extends StatelessWidget {
                                         exercisesAtPosition[0],
                                       )
                                     : null,
+                                supersetIndex: position + 1,
                                 getSupersetInfo: getSupersetInfo,
                               ),
                       ),
@@ -165,19 +130,7 @@ class SupersetExerciseGroup extends StatelessWidget {
                   ),
                 ),
 
-                // Connecting line (except for last exercise)
-                if (!isLast)
-                  Container(
-                    margin: const EdgeInsets.only(left: 33),
-                    width: 2,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(1),
-                    ),
-                  ),
+                // No connecting line needed now that indicators are inside cards
               ],
             );
           }),

@@ -8,6 +8,8 @@ class AlternativeExerciseGroup extends StatelessWidget {
   final Function(Exercise) onExerciseCompleted;
   final Function(Exercise) onLongPress;
   final VoidCallback onTap;
+  final Function(Exercise)? onSupersetProgress;
+  final int? supersetIndex;
   final SupersetInfo Function(Exercise)? getSupersetInfo;
 
   const AlternativeExerciseGroup({
@@ -16,6 +18,8 @@ class AlternativeExerciseGroup extends StatelessWidget {
     required this.onExerciseCompleted,
     required this.onLongPress,
     required this.onTap,
+    this.onSupersetProgress,
+    this.supersetIndex,
     this.getSupersetInfo,
   });
 
@@ -51,7 +55,7 @@ class AlternativeExerciseGroup extends StatelessWidget {
             ),
           ),
         SizedBox(
-          height: 220,
+          height: 180,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
@@ -64,12 +68,16 @@ class AlternativeExerciseGroup extends StatelessWidget {
                   right: index == alternatives.length - 1 ? 16.0 : 8.0,
                 ),
                 child: SizedBox(
-                  width: 220 * 1.6, // Matching ExerciseCard aspect ratio
+                  width: 180 * 1.6, // Matching ExerciseCard aspect ratio
                   child: ExerciseCard(
                     exercise: exercise,
                     onExerciseCompleted: () => onExerciseCompleted(exercise),
                     onLongPress: () => onLongPress(exercise),
                     onTap: onTap,
+                    onSupersetProgress: onSupersetProgress != null
+                        ? () => onSupersetProgress!(exercise)
+                        : null,
+                    supersetIndex: supersetIndex,
                     getSupersetInfo: getSupersetInfo,
                   ),
                 ),
