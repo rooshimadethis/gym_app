@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:gym_app/main.dart'; // for db access
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -78,31 +79,89 @@ class _SettingsPageState extends State<SettingsPage> {
         final data = jsonDecode(content) as Map<String, dynamic>;
         final exercises = data['exercises_data'] as List;
         final settings = data['settings'] as Map<String, dynamic>;
+        // Check for history data (new format)
+        final historyData = data.containsKey('history_data')
+            ? List<Map<String, dynamic>>.from(data['history_data'])
+            : null;
 
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('exercises_data', jsonEncode(exercises));
-        await prefs.setInt('timer_duration', settings['timer_duration']);
-        await prefs.setBool(
-          'notifications_enabled',
-          settings['notifications_enabled'],
-        );
-        if (settings.containsKey('warmup_set_enabled')) {
-          await prefs.setBool(
-            'warmup_set_enabled',
-            settings['warmup_set_enabled'],
+        if (mounted) {
+          // Confirm overwrite if history exists
+          final shouldImport = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Import Data'),
+              content: const Text(
+                'This will overwrite your current settings and exercise list.\n\n'
+                'For history, do you want to CLEAR existing history and replace it with the backup?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false), // Cancel
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    // "Merge" logic could go here, but complex.
+                    // For now, let's treat "Cancel" as abort, and just add a separate "Keep & Append" button?
+                    // Simplifying to: Import = Restore state.
+                    await db.deleteAllHistory();
+                    Navigator.pop(context, true);
+                  },
+                  child: const Text(
+                    'Clear & Import',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+                if (historyData != null)
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Append History'),
+                  ),
+              ],
+            ),
           );
+
+          if (shouldImport == true) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('exercises_data', jsonEncode(exercises));
+            await prefs.setInt('timer_duration', settings['timer_duration']);
+            await prefs.setBool(
+              'notifications_enabled',
+              settings['notifications_enabled'],
+            );
+            if (settings.containsKey('warmup_set_enabled')) {
+              await prefs.setBool(
+                'warmup_set_enabled',
+                settings['warmup_set_enabled'],
+              );
+            }
+
+            if (historyData != null) {
+              await db.batchImportHistory(historyData);
+            }
+
+            // Flag migration as done since we just imported explicit state
+            await prefs.setBool('legacy_drift_migration_v1', true);
+
+            _loadSettings();
+
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Data imported successfully!')),
+              );
+              // Trigger a reload of exercises in main app if we could,
+              // but since user will likely go back, the app logic usually reloads on focus or init.
+              // To be safe, we might need to tell main to reload, but simpler to just pop or show success.
+            }
+          }
         }
-
-        _loadSettings();
-
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Data imported successfully!')),
-        );
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error importing data: Invalid file format.')),
+          SnackBar(
+            content: Text('Error importing data: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } else {
@@ -136,6 +195,11 @@ class _SettingsPageState extends State<SettingsPage> {
         'warmup_set_enabled': warmupSetEnabled,
       },
     };
+
+    // Export History from DB
+    final history = await db.getAllHistory();
+    // drift's toJson converts DateTime to millisecondsSinceEpoch by default if not configured otherwise
+    data['history_data'] = history.map((e) => e.toJson()).toList();
 
     try {
       Uint8List bytes = utf8.encode(jsonEncode(data));

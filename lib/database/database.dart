@@ -103,6 +103,35 @@ class AppDatabase extends _$AppDatabase {
           )!,
     };
   }
+
+  Future<void> deleteAllHistory() {
+    return delete(historyEntries).go();
+  }
+
+  Future<void> batchImportHistory(List<Map<String, dynamic>> jsonList) async {
+    await batch((batch) {
+      for (final json in jsonList) {
+        // Handle DateTime conversion if stored as String in JSON
+        final timestamp = json['timestamp'] is int
+            ? DateTime.fromMillisecondsSinceEpoch(json['timestamp'])
+            : DateTime.parse(json['timestamp'].toString());
+
+        batch.insert(
+          historyEntries,
+          HistoryEntriesCompanion.insert(
+            exerciseName: json['exerciseName'],
+            weight: (json['weight'] as num).toDouble(),
+            reps: json['reps'] as int,
+            isWarmup: Value(json['isWarmup'] as bool? ?? false),
+            timestamp: timestamp,
+            workoutPosition: json['workoutPosition'] as int,
+            fatigueScore: json['fatigueScore'] as int,
+            sessionId: json['sessionId'],
+          ),
+        );
+      }
+    });
+  }
 }
 
 LazyDatabase _openConnection() {

@@ -16,6 +16,7 @@ import 'package:gym_app/database/database.dart';
 import 'package:gym_app/services/workout_session_manager.dart';
 import 'package:gym_app/logic/priority_manager.dart';
 import 'package:gym_app/services/rest_timer_manager.dart';
+import 'package:drift/drift.dart' as drift;
 import 'package:gym_app/widgets/rest_timer_overlay.dart';
 
 late AppDatabase db;
@@ -223,7 +224,52 @@ class _MyHomePageState extends State<MyHomePage> {
         }
       }
     }
+    await _migrateLegacyHistory();
     filterExercises();
+  }
+
+  Future<void> _migrateLegacyHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('legacy_drift_migration_v1') ?? false) return;
+
+    final timestamp = DateTime.now();
+    final sessionId = 'legacy_import_${timestamp.millisecondsSinceEpoch}';
+
+    // check if we have any data to migrate
+    bool hasData = _allExercises.any(
+      (e) => e.sets.any(
+        (s) => s.weight.isNotEmpty && double.tryParse(s.weight) != null,
+      ),
+    );
+
+    if (hasData) {
+      await db.batch((batch) {
+        for (var exercise in _allExercises) {
+          for (var set in exercise.sets) {
+            final weight = double.tryParse(set.weight);
+            if (weight != null) {
+              batch.insert(
+                db.historyEntries,
+                HistoryEntriesCompanion.insert(
+                  exerciseName: exercise.name,
+                  weight: weight,
+                  reps: int.tryParse(set.reps) ?? 0,
+                  // Assume not warmup for legacy data migration
+                  isWarmup: const drift.Value(false),
+                  timestamp: timestamp,
+                  workoutPosition: 0,
+                  fatigueScore: 0, // Neutral fatigue for imported data
+                  sessionId: sessionId,
+                ),
+              );
+            }
+          }
+        }
+      });
+      debugPrint('Migrated legacy history to Drift database');
+    }
+
+    await prefs.setBool('legacy_drift_migration_v1', true);
   }
 
   Future<void> _saveExercises() async {
