@@ -48,6 +48,7 @@ class AppDatabase extends _$AppDatabase {
               expression: tbl.timestamp,
               mode: OrderingMode.desc,
             ),
+            (tbl) => OrderingTerm(expression: tbl.id, mode: OrderingMode.desc),
           ])
           ..limit(limit))
         .get();

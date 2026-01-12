@@ -107,6 +107,27 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
     _loadSettings();
     _loadHistory();
     _initializeControllersAndFocusNodes();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (WorkoutSessionManager.instance.isWorkoutActive &&
+          _fatigueScore == null) {
+        _triggerFatigueCheckIn();
+      }
+    });
+  }
+
+  Future<void> _triggerFatigueCheckIn() async {
+    final score = await showDialog<int>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const FatigueCheckInModal(),
+    );
+    if (!mounted) return;
+
+    setState(() {
+      _fatigueScore = score ?? 0;
+    });
+    _generateSuggestion(); // Regenerate based on actual fatigue check-in
   }
 
   Future<void> _loadSettings() async {
@@ -119,7 +140,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
   Future<void> _loadHistory() async {
     final history = await db.getHistoryForExercise(
       widget.exercise.name,
-      limit: 10, // Fetch more to ensure we cover the full last session
+      limit: 40, // Fetch more to ensure we cover multiple past sessions
     );
     if (mounted) {
       setState(() {
@@ -145,6 +166,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
       history: _history,
       currentPosition: currentPosition,
       currentFatigueCheckIn: _fatigueScore ?? 0,
+      currentSessionId: sessionManager.currentSessionId,
     );
 
     if (mounted) {
@@ -183,6 +205,19 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
         }
       });
     }
+  }
+
+  List<HistoryEntry> _getRecentSessions() {
+    final sessions = <HistoryEntry>[];
+    final seen = <String>{};
+    for (var h in _history) {
+      if (!seen.contains(h.sessionId)) {
+        sessions.add(h);
+        seen.add(h.sessionId);
+      }
+      if (sessions.length >= 3) break;
+    }
+    return sessions;
   }
 
   @override
@@ -247,7 +282,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
     }
   }
 
-  Future<void> _logSet() async {
+  Future<void> _logSet({bool finish = false}) async {
     final weight = _weightControllers[_lastFocusedSet].text;
     if (weight.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -259,23 +294,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
       return;
     }
 
-    // Fatigue Check-in Logic
-    final sessionManager = WorkoutSessionManager.instance;
-    if (sessionManager.isWorkoutActive && _fatigueScore == null) {
-      final score = await showDialog<int>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const FatigueCheckInModal(),
-      );
-      if (!mounted) return;
-
-      setState(() {
-        _fatigueScore = score ?? 0;
-      });
-      _generateSuggestion(); // Regenerate based on actual fatigue check-in
-    }
-
-    if (_lastFocusedSet < widget.exercise.sets.length - 1) {
+    if (!finish && _lastFocusedSet < widget.exercise.sets.length - 1) {
       final reps = _repsControllers[_lastFocusedSet].text;
 
       // Only auto-fill if it's NOT a warmup set (first set with warmup enabled)
@@ -294,7 +313,16 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
       int.tryParse(_repsControllers[_lastFocusedSet].text) ?? 0,
     );
 
+    // Refresh history so the "Last:" widget and Suggestion Engine update
+    await _loadHistory();
+
     if (!mounted) return;
+
+    if (finish) {
+      widget.onExerciseCompleted();
+      Navigator.pop(context);
+      return;
+    }
 
     // Check if exercise is part of superset
     if (widget.exercise.isPartOfSuperset && widget.getSupersetInfo != null) {
@@ -563,13 +591,67 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'Last: ${_history.first.weight.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '')}lbs × ${_history.first.reps}',
+                                'Recent: ',
                                 style: TextStyle(
                                   color: Theme.of(context).colorScheme.tertiary,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w900,
                                   fontSize: 13,
                                 ),
                               ),
+                              if (_getRecentSessions().isEmpty)
+                                const Text(
+                                  'First time!',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 13,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                )
+                              else
+                                ..._getRecentSessions().asMap().entries.map((
+                                  entry,
+                                ) {
+                                  final idx = entry.key;
+                                  final h = entry.value;
+                                  final sessions = _getRecentSessions();
+                                  final isLast = idx == sessions.length - 1;
+                                  final weightStr = h.weight
+                                      .toStringAsFixed(1)
+                                      .replaceAll(RegExp(r'\.0$'), '');
+
+                                  return Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '${weightStr}lbs × ${h.reps}',
+                                        style: TextStyle(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.tertiary,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      if (!isLast)
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                          ),
+                                          child: Text(
+                                            '|',
+                                            style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .tertiary
+                                                  .withValues(alpha: 0.4),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  );
+                                }),
                             ],
                           ),
                         ),
@@ -664,7 +746,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                 ),
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 220),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final isWarmupSet = _warmupSetEnabled && index == 0;
@@ -794,14 +876,11 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                                     ],
                                     onSubmitted: (_) {
                                       HapticFeedback.mediumImpact();
-                                      _saveData();
-                                      if (index ==
-                                          widget.exercise.sets.length - 1) {
-                                        widget.onExerciseCompleted();
-                                        Navigator.pop(context);
-                                      } else {
-                                        _logSet();
-                                      }
+                                      _logSet(
+                                        finish:
+                                            index ==
+                                            widget.exercise.sets.length - 1,
+                                      );
                                     },
                                   ),
                                 ],
@@ -908,13 +987,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                         }
 
                         // Normal flow when workout is active
-                        _saveData();
-                        if (isLastSetFocused) {
-                          widget.onExerciseCompleted();
-                          Navigator.pop(context);
-                        } else {
-                          _logSet();
-                        }
+                        _logSet(finish: isLastSetFocused);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Theme.of(context).colorScheme.primary,

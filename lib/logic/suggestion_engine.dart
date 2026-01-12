@@ -23,23 +23,54 @@ class SuggestionEngine {
     required List<HistoryEntry> history,
     required int currentPosition,
     required int currentFatigueCheckIn, // -1 (Fresh), 0 (Normal), 1 (Fatigued)
+    String? currentSessionId,
   }) {
     if (history.isEmpty) {
       return Suggestion(
-        weight: 45.0, // Default starting weight (standard barbell)
+        weight: 45.0,
         reps: _targetReps,
         reasoning: "No history found. Start light and find your baseline.",
         weightChange: 0,
       );
     }
 
-    // Get the most recent set - the LAST set indicates true capacity
-    final lastSession = history.first; // Assumes history is sorted desc
+    // Identify entries from previous sessions only
+    final previousEntries = currentSessionId != null
+        ? history.where((e) => e.sessionId != currentSessionId).toList()
+        : history;
 
-    // 1. Calculate Fatigue Scores
+    if (previousEntries.isEmpty) {
+      return Suggestion(
+        weight: 45.0,
+        reps: _targetReps,
+        reasoning: "First session for this exercise. Aim for baseline.",
+        weightChange: 0,
+      );
+    }
+
+    // 1. Identify the most recent session and its entries from the remaining history
+    // History is sorted by timestamp DESC, so previousEntries.first is the most recent set ever logged.
+    final lastSessionId = previousEntries.first.sessionId;
+    final lastSessionEntries = previousEntries
+        .where((e) => e.sessionId == lastSessionId)
+        .toList();
+
+    // 2. Sort by ID or Timestamp ascending to find the true FINAL set of that session
+    final sessionByTime = List<HistoryEntry>.from(lastSessionEntries)
+      ..sort(
+        (a, b) => a.id.compareTo(b.id),
+      ); // Using ID is safer for insertion order
+
+    final lastSetInSession = sessionByTime.last;
+    final lastReps = lastSetInSession.reps;
+    final lastWeight = lastSetInSession.weight;
+
+    final isSessionIncomplete = lastReps == 0;
+
+    // 3. Calculate Fatigue Scores for the Final Set vs Current Context
     final lastFatigueScore = _calculateFatigueScore(
-      position: lastSession.workoutPosition,
-      userRating: lastSession.fatigueScore,
+      position: lastSetInSession.workoutPosition,
+      userRating: lastSetInSession.fatigueScore,
     );
 
     final currentFatigueScore = _calculateFatigueScore(
@@ -47,84 +78,53 @@ class SuggestionEngine {
       userRating: currentFatigueCheckIn,
     );
 
-    // 2. Base Comparison Logic (Fatigue-First Heuristic)
-    bool shouldIncrease = false;
-    String fatigueReason = "";
-
-    if (currentFatigueScore <= lastFatigueScore) {
-      // Current conditions are equal or better (lower score = less fatigue)
-      shouldIncrease = true;
-      fatigueReason =
-          "Conditions are similar or better than last time (Score: $currentFatigueScore vs $lastFatigueScore).";
-    } else {
-      // Current conditions are worse (higher score = more fatigue)
-      shouldIncrease = false;
-      fatigueReason =
-          "More fatigue expected today (Score: $currentFatigueScore vs $lastFatigueScore).";
-    }
-
-    // 3. RIR / Reps Override
-    // Use the LAST set's reps - if they can hit 12+ on their last set, they have capacity
-    final lastReps = lastSession.reps;
-
-    String performanceReason = "";
-    if (lastReps >= 15) {
-      shouldIncrease = true;
-      performanceReason =
-          "Great performance last session ($lastReps reps) overrides fatigue.";
-    } else if (lastReps == 14) {
-      final diff = currentFatigueScore - lastFatigueScore;
-      if (diff <= 2) {
-        shouldIncrease = true;
-        performanceReason =
-            "Strong session last time ($lastReps reps) suggests capacity.";
-      }
-    } else if (lastReps == 13) {
-      final diff = currentFatigueScore - lastFatigueScore;
-      if (diff <= 1) {
-        shouldIncrease = true;
-        performanceReason =
-            "Solid progress last time ($lastReps reps) allows increase.";
-      }
-    }
-
-    // 4. Construct Final Suggestion
-    double suggestedWeight = lastSession.weight;
+    // 4. Logic Decision
+    double suggestedWeight = lastWeight;
     double change = 0;
-    String finalReason = performanceReason.isNotEmpty
-        ? performanceReason
-        : fatigueReason;
+    String reasoning = "";
 
-    if (shouldIncrease) {
-      if (lastReps >= 12) {
+    bool conditionsAllowIncrease = currentFatigueScore <= lastFatigueScore;
+
+    if (isSessionIncomplete) {
+      suggestedWeight = lastWeight;
+      change = 0;
+      reasoning =
+          "Last session was cut short (0 reps). Maintain ${lastWeight}lbs to build stamina.";
+    } else if (lastReps >= 15) {
+      // High rep performance on the LAST set is a clear signal
+      suggestedWeight += _defaultIncrement;
+      change = _defaultIncrement;
+      reasoning =
+          "Exceptional finish ($lastReps reps @ ${lastWeight}lbs). Increasing weight.";
+    } else if (lastReps >= _targetReps) {
+      if (conditionsAllowIncrease) {
         suggestedWeight += _defaultIncrement;
         change = _defaultIncrement;
-        finalReason += " Increasing weight.";
+        reasoning =
+            "Hit $_targetReps+ reps on your final set last session. Conditions allow increase.";
       } else {
-        suggestedWeight = lastSession.weight;
+        suggestedWeight = lastWeight;
         change = 0;
-        finalReason =
-            "Hit $_targetReps reps (Last: $lastReps) before adding weight. $fatigueReason";
+        reasoning =
+            "Hit target reps last time, but today's fatigue/position suggests maintaining.";
       }
     } else {
-      if (!finalReason.contains("Maintain")) {
-        finalReason += " Maintain weight.";
-      }
+      // This is the "philosophy" part: if lastReps < 12, NO INCREASE.
+      suggestedWeight = lastWeight;
+      change = 0;
+      reasoning =
+          "Last set was $lastReps reps. Master $lastWeight lbs for $_targetReps reps before increasing.";
     }
 
     return Suggestion(
       weight: suggestedWeight,
       reps: _targetReps,
-      reasoning: finalReason,
+      reasoning: reasoning,
       weightChange: change,
     );
   }
 
   /// Calculates the Fatigue Score based on position and user rating
-  /// Position 1-2: +0
-  /// Position 3+: +1
-  /// User Fresh (-1): -1
-  /// User Fatigued (1): +1
   static int _calculateFatigueScore({
     required int position,
     required int userRating,

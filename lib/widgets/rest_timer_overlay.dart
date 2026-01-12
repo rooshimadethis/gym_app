@@ -10,8 +10,30 @@ class RestTimerOverlay extends StatefulWidget {
   State<RestTimerOverlay> createState() => _RestTimerOverlayState();
 }
 
-class _RestTimerOverlayState extends State<RestTimerOverlay> {
+class _RestTimerOverlayState extends State<RestTimerOverlay>
+    with SingleTickerProviderStateMixin {
   Offset _offset = const Offset(20, 100); // Initial position from bottom-right
+  late AnimationController _inertiaController;
+  Animation<Offset>? _inertiaAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _inertiaController = AnimationController(vsync: this);
+    _inertiaController.addListener(() {
+      if (_inertiaAnimation != null) {
+        setState(() {
+          _offset = _inertiaAnimation!.value;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _inertiaController.dispose();
+    super.dispose();
+  }
 
   String _formatTime(int milliseconds) {
     int seconds = (milliseconds / 1000).truncate();
@@ -42,19 +64,52 @@ class _RestTimerOverlayState extends State<RestTimerOverlay> {
           right: _offset.dx,
           bottom: _offset.dy,
           child: GestureDetector(
+            onPanStart: (_) => _inertiaController.stop(),
             onPanUpdate: (details) {
               setState(() {
+                final size = MediaQuery.of(context).size;
                 _offset = Offset(
-                  (_offset.dx - details.delta.dx).clamp(
-                    10,
-                    MediaQuery.of(context).size.width - 200,
-                  ),
-                  (_offset.dy - details.delta.dy).clamp(
-                    10,
-                    MediaQuery.of(context).size.height - 120,
-                  ),
+                  (_offset.dx - details.delta.dx).clamp(10, size.width - 250),
+                  (_offset.dy - details.delta.dy).clamp(10, size.height - 200),
                 );
               });
+            },
+            onPanEnd: (details) {
+              final velocity = details.velocity.pixelsPerSecond;
+              final magnitude = velocity.distance;
+
+              if (magnitude > 200) {
+                final size = MediaQuery.of(context).size;
+                // Calculate inertia target based on velocity
+                // We multiply by a factor (0.2) to simulate travel distance
+                final target =
+                    _offset + Offset(-velocity.dx, -velocity.dy) * 0.2;
+
+                final clampedTarget = Offset(
+                  target.dx.clamp(10, size.width - 250),
+                  target.dy.clamp(10, size.height - 200),
+                );
+
+                _inertiaAnimation =
+                    Tween<Offset>(begin: _offset, end: clampedTarget).animate(
+                      CurvedAnimation(
+                        parent: _inertiaController,
+                        curve: Curves.easeOutQuart,
+                      ),
+                    );
+
+                _inertiaController.duration = Duration(
+                  milliseconds: (magnitude / 5).clamp(300, 800).toInt(),
+                );
+                _inertiaController.forward(from: 0);
+
+                // Haptic feedback for flick
+                if (clampedTarget.dy > size.height - 250) {
+                  HapticFeedback.mediumImpact();
+                } else {
+                  HapticFeedback.lightImpact();
+                }
+              }
             },
             child: TweenAnimationBuilder<double>(
               duration: const Duration(milliseconds: 500),
