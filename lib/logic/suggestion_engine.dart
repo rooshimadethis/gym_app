@@ -15,7 +15,7 @@ class Suggestion {
 }
 
 class SuggestionEngine {
-  static const double _defaultIncrement = 2.5; // kg
+  static const double _defaultIncrement = 5.0; // lbs (standard plate increment)
   static const int _targetReps = 12;
 
   /// Main method to generate a suggestion based on history and current context
@@ -26,7 +26,7 @@ class SuggestionEngine {
   }) {
     if (history.isEmpty) {
       return Suggestion(
-        weight: 20.0, // Default starting weight? Or maybe null/0
+        weight: 45.0, // Default starting weight (standard barbell)
         reps: _targetReps,
         reasoning: "No history found. Start light and find your baseline.",
         weightChange: 0,

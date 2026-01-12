@@ -574,7 +574,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'Last: ${_history.first.weight.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '')}kg × ${_history.first.reps}',
+                                'Last: ${_history.first.weight.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '')}lbs × ${_history.first.reps}',
                                 style: TextStyle(
                                   color: Theme.of(context).colorScheme.tertiary,
                                   fontWeight: FontWeight.bold,
@@ -615,7 +615,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    'Suggested: ${_suggestion!.weight}kg',
+                                    'Suggested: ${_suggestion!.weight}lbs',
                                     style: TextStyle(
                                       color: Theme.of(
                                         context,
