@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:gym_app/exercise_card.dart';
-import 'package:gym_app/alternative_exercise_group.dart';
-import 'package:gym_app/models.dart';
-import 'package:gym_app/exercise_detail_view.dart';
+import 'package:gym_app/widgets/exercise_card.dart';
+import 'package:gym_app/widgets/alternative_exercise_group.dart';
+import 'package:gym_app/models/models.dart';
+import 'package:gym_app/views/exercise_detail_view.dart';
 
 class SupersetExerciseGroup extends StatelessWidget {
   final List<Exercise> supersetExercises; // Sorted by supersetOrder

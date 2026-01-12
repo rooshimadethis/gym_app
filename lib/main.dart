@@ -1,17 +1,22 @@
 import 'dart:async';
-import 'package:gym_app/exercise_card.dart';
-import 'package:gym_app/alternative_exercise_group.dart';
-import 'package:gym_app/superset_exercise_group.dart';
-import 'package:gym_app/exercise_detail_view.dart';
+import 'package:gym_app/widgets/exercise_card.dart';
+import 'package:gym_app/widgets/alternative_exercise_group.dart';
+import 'package:gym_app/widgets/superset_exercise_group.dart';
+import 'package:gym_app/views/exercise_detail_view.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
-import 'package:gym_app/models.dart';
+import 'package:gym_app/models/models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:gym_app/settings_page.dart';
+import 'package:gym_app/views/settings_page.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:gym_app/stopwatch_task_handler.dart';
+import 'package:gym_app/services/stopwatch_task_handler.dart';
+import 'package:gym_app/database/database.dart';
+import 'package:gym_app/services/workout_session_manager.dart';
+import 'package:gym_app/logic/priority_manager.dart';
+
+late AppDatabase db;
 
 @pragma('vm:entry-point')
 void startStopwatchCallback() {
@@ -20,6 +25,8 @@ void startStopwatchCallback() {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  db = AppDatabase();
+  await WorkoutSessionManager.instance.init();
   await FlutterDisplayMode.setHighRefreshRate();
   FlutterForegroundTask.initCommunicationPort();
   runApp(const MyApp());
@@ -136,6 +143,7 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     _loadExercises();
     _loadSupersetProgress();
+    _refreshPriorities(); // Initial priority fetch
     _searchController.addListener(() {
       filterExercises();
     });
@@ -224,6 +232,19 @@ class _MyHomePageState extends State<MyHomePage> {
       ..sort((a, b) => (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0));
   }
 
+  Future<void> _refreshPriorities() async {
+    final freshDates = await db.getLastFreshDates();
+    if (mounted) {
+      setState(() {
+        for (var exercise in _allExercises) {
+          exercise.isHighPriority = PriorityManager.isHighPriority(
+            freshDates[exercise.name],
+          );
+        }
+      });
+    }
+  }
+
   void filterExercises() {
     final query = _searchController.text.toLowerCase();
     setState(() {
@@ -299,6 +320,7 @@ class _MyHomePageState extends State<MyHomePage> {
         _allExercises.add(exercise);
       }
       filterExercises();
+      _refreshPriorities(); // Refresh on completion
     });
     _saveExercises();
   }
@@ -468,6 +490,28 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             const SizedBox(width: 8),
           ],
+        ),
+        floatingActionButton: ListenableBuilder(
+          listenable: WorkoutSessionManager.instance,
+          builder: (context, _) {
+            final isRunning = WorkoutSessionManager.instance.isWorkoutActive;
+            return FloatingActionButton.extended(
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                if (isRunning) {
+                  WorkoutSessionManager.instance.endWorkout();
+                } else {
+                  WorkoutSessionManager.instance.startWorkout();
+                }
+              },
+              label: Text(isRunning ? 'End Workout' : 'Start Workout'),
+              icon: Icon(isRunning ? Icons.stop : Icons.play_arrow),
+              backgroundColor: isRunning
+                  ? Colors.red
+                  : Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+            );
+          },
         ),
         body: Column(
           children: [

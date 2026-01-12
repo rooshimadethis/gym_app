@@ -2,8 +2,8 @@ import 'package:animations/animations.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:gym_app/exercise_detail_view.dart';
-import 'package:gym_app/models.dart';
+import 'package:gym_app/views/exercise_detail_view.dart';
+import 'package:gym_app/models/models.dart';
 
 class ExerciseCard extends StatefulWidget {
   final Exercise exercise;
@@ -197,6 +197,47 @@ class _ExerciseCardState extends State<ExerciseCard>
                         ],
                       ),
                     ),
+                    if (widget.exercise.isHighPriority)
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.priority_high,
+                                size: 12,
+                                color: Colors.white,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'PRIORITY',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

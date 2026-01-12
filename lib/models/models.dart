@@ -18,6 +18,7 @@ class Exercise {
   String? groupId;
   String? supersetId;
   int? supersetOrder;
+  bool isHighPriority;
 
   Exercise({
     required this.name,
@@ -27,6 +28,7 @@ class Exercise {
     this.groupId,
     this.supersetId,
     this.supersetOrder,
+    this.isHighPriority = false,
   }) : sets = sets ?? [SetData(), SetData(), SetData()];
 
   Map<String, dynamic> toJson() => {

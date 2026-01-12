@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:gym_app/models.dart';
+import 'package:gym_app/models/models.dart';
 
 class NextExerciseModal extends StatelessWidget {
   final List<Exercise> nextExercises;

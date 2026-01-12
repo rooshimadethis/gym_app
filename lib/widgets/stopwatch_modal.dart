@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:gym_app/stopwatch_task_handler.dart';
+import 'package:gym_app/services/stopwatch_task_handler.dart';
 
 class StopwatchModal extends StatefulWidget {
   const StopwatchModal({super.key});
