@@ -1168,8 +1168,12 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                             ),
                           );
 
-                          // Regenerate suggestion now that workout is active
-                          await _generateSuggestion();
+                          // Regenerate suggestion or trigger fatigue check-in
+                          if (_fatigueScore == null) {
+                            await _triggerFatigueCheckIn();
+                          } else {
+                            await _generateSuggestion();
+                          }
                           return;
                         }
 
