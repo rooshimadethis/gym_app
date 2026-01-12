@@ -25,6 +25,16 @@ class WorkoutSessionManager extends ChangeNotifier {
     if (startTimeIso != null) {
       _sessionStartTime = DateTime.tryParse(startTimeIso);
     }
+    await _checkAutoEnd();
+  }
+
+  Future<void> _checkAutoEnd() async {
+    if (_sessionStartTime != null) {
+      final difference = DateTime.now().difference(_sessionStartTime!);
+      if (difference.inHours >= 4) {
+        await endWorkout();
+      }
+    }
   }
 
   Future<void> startWorkout() async {
