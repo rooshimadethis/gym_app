@@ -46,7 +46,8 @@ class ExerciseDetailView extends StatefulWidget {
   State<ExerciseDetailView> createState() => _ExerciseDetailViewState();
 }
 
-class _ExerciseDetailViewState extends State<ExerciseDetailView> {
+class _ExerciseDetailViewState extends State<ExerciseDetailView>
+    with WidgetsBindingObserver {
   int _lastFocusedSet = 0;
   int? _fatigueScore;
 
@@ -57,6 +58,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
   late List<TextEditingController> _repsControllers;
   late List<FocusNode> _weightFocusNodes;
   late List<FocusNode> _repsFocusNodes;
+  late List<GlobalKey> _setKeys;
 
   Future<void> _requestPermissions() async {
     final NotificationPermission notificationPermission =
@@ -104,6 +106,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadSettings();
     _loadHistory();
     _initializeControllersAndFocusNodes();
@@ -114,6 +117,14 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
         _triggerFatigueCheckIn();
       }
     });
+  }
+
+  @override
+  void didChangeMetrics() {
+    // If keyboard height changes and we have a focused set, ensure it's centered
+    if (View.of(context).viewInsets.bottom > 0) {
+      _scrollToSet(_lastFocusedSet, delayMs: 100);
+    }
   }
 
   Future<void> _triggerFatigueCheckIn() async {
@@ -176,6 +187,23 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
     }
   }
 
+  void _scrollToSet(int index, {int delayMs = 500}) {
+    // Small delay to allow keyboard animation to finish/progress
+    Future.delayed(Duration(milliseconds: delayMs), () {
+      if (!mounted) return;
+      if (index < 0 || index >= _setKeys.length) return;
+      final key = _setKeys[index];
+      if (key.currentContext != null) {
+        Scrollable.ensureVisible(
+          key.currentContext!,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutCubic,
+          alignment: 0.5, // Target center of the viewport
+        );
+      }
+    });
+  }
+
   void _initializeControllersAndFocusNodes() {
     final sets = widget.exercise.sets;
     _weightControllers = List.generate(
@@ -188,20 +216,19 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
     );
     _weightFocusNodes = List.generate(sets.length, (i) => FocusNode());
     _repsFocusNodes = List.generate(sets.length, (i) => FocusNode());
+    _setKeys = List.generate(sets.length, (i) => GlobalKey());
 
     for (int i = 0; i < sets.length; i++) {
       _weightFocusNodes[i].addListener(() {
         if (_weightFocusNodes[i].hasFocus) {
-          setState(() {
-            _lastFocusedSet = i;
-          });
+          setState(() => _lastFocusedSet = i);
+          _scrollToSet(i);
         }
       });
       _repsFocusNodes[i].addListener(() {
         if (_repsFocusNodes[i].hasFocus) {
-          setState(() {
-            _lastFocusedSet = i;
-          });
+          setState(() => _lastFocusedSet = i);
+          _scrollToSet(i);
         }
       });
     }
@@ -222,6 +249,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _saveData();
     for (int i = 0; i < _weightControllers.length; i++) {
       _weightControllers[i].dispose();
@@ -247,20 +275,19 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
       _repsControllers.add(TextEditingController());
       _weightFocusNodes.add(FocusNode());
       _repsFocusNodes.add(FocusNode());
+      _setKeys.add(GlobalKey());
 
       final newIndex = widget.exercise.sets.length - 1;
       _weightFocusNodes[newIndex].addListener(() {
         if (_weightFocusNodes[newIndex].hasFocus) {
-          setState(() {
-            _lastFocusedSet = newIndex;
-          });
+          setState(() => _lastFocusedSet = newIndex);
+          _scrollToSet(newIndex);
         }
       });
       _repsFocusNodes[newIndex].addListener(() {
         if (_repsFocusNodes[newIndex].hasFocus) {
-          setState(() {
-            _lastFocusedSet = newIndex;
-          });
+          setState(() => _lastFocusedSet = newIndex);
+          _scrollToSet(newIndex);
         }
       });
     });
@@ -275,6 +302,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
         _repsControllers.removeLast().dispose();
         _weightFocusNodes.removeLast().dispose();
         _repsFocusNodes.removeLast().dispose();
+        _setKeys.removeLast();
         if (_lastFocusedSet >= widget.exercise.sets.length) {
           _lastFocusedSet = widget.exercise.sets.length - 1;
         }
@@ -466,7 +494,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
           CustomScrollView(
             slivers: [
               SliverAppBar(
-                expandedHeight: 250,
+                expandedHeight: 170,
                 pinned: true,
                 stretch: true,
                 backgroundColor: const Color(0xFF0A0A0A),
@@ -482,24 +510,54 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                               widget.exercise.imageUrl != null
                           ? Image.asset(
                               widget.exercise.imageUrl!,
-                              fit: BoxFit.cover,
+                              fit: BoxFit.contain,
                             )
                           : CachedNetworkImage(
                               imageUrl: placeHolderImageUrl,
-                              fit: BoxFit.cover,
+                              fit: BoxFit.contain,
                               placeholder: (context, url) => Container(
                                 color: Theme.of(
                                   context,
                                 ).colorScheme.surfaceContainerHighest,
                               ),
                             ),
-                      const DecoratedBox(
+                      DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, Color(0xFF0A0A0A)],
+                            colors: [
+                              const Color(0xFF0A0A0A).withValues(alpha: 0.0),
+                              const Color(0xFF0A0A0A).withValues(alpha: 0.2),
+                              const Color(0xFF0A0A0A).withValues(alpha: 0.7),
+                              const Color(0xFF0A0A0A),
+                            ],
+                            stops: const [0.0, 0.3, 0.7, 1.0],
                           ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 20,
+                        right: 20,
+                        bottom: 16,
+                        child: Text(
+                          widget.exercise.name,
+                          style: const TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: -1.5,
+                            height: 0.95,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black45,
+                                offset: Offset(0, 2),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -522,154 +580,25 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
               ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.fromLTRB(20.0, 16.0, 20.0, 24.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: 0.25),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.primary.withValues(alpha: 0.3),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Text(
-                          widget.exercise.name,
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        widget.exercise.isPartOfSuperset
-                            ? 'Part of a Superset'
-                            : 'Strength Training',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
                       if (_history.isNotEmpty) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.tertiary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.tertiary.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.history,
-                                size: 16,
-                                color: Theme.of(context).colorScheme.tertiary,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Recent: ',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.tertiary,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              if (_getRecentSessions().isEmpty)
-                                const Text(
-                                  'First time!',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 13,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                )
-                              else
-                                ..._getRecentSessions().asMap().entries.map((
-                                  entry,
-                                ) {
-                                  final idx = entry.key;
-                                  final h = entry.value;
-                                  final sessions = _getRecentSessions();
-                                  final isLast = idx == sessions.length - 1;
-                                  final weightStr = h.weight
-                                      .toStringAsFixed(1)
-                                      .replaceAll(RegExp(r'\.0$'), '');
-
-                                  return Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        '${weightStr}lbs × ${h.reps}',
-                                        style: TextStyle(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.tertiary,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                      if (!isLast)
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                          ),
-                                          child: Text(
-                                            '|',
-                                            style: TextStyle(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .tertiary
-                                                  .withValues(alpha: 0.4),
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  );
-                                }),
-                            ],
-                          ),
-                        ),
-                      ],
-                      if (_suggestion != null) ...[
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Theme.of(context)
                                 .colorScheme
-                                .secondaryContainer
-                                .withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(12),
+                                .tertiaryContainer
+                                .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(24),
                             border: Border.all(
                               color: Theme.of(
                                 context,
-                              ).colorScheme.secondary.withValues(alpha: 0.3),
+                              ).colorScheme.tertiary.withValues(alpha: 0.1),
+                              width: 1.5,
                             ),
                           ),
                           child: Column(
@@ -678,29 +607,194 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                               Row(
                                 children: [
                                   Icon(
-                                    Icons.lightbulb_outline,
-                                    size: 16,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.secondary,
+                                    Icons.history,
+                                    size: 18,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .tertiary
+                                        .withValues(alpha: 0.8),
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    'Suggested: ${_suggestion!.weight}lbs',
+                                    'RECENT HISTORY',
                                     style: TextStyle(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.secondary,
-                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .tertiary
+                                          .withValues(alpha: 0.8),
+                                      fontWeight: FontWeight.w900,
                                       fontSize: 14,
+                                      letterSpacing: 1,
                                     ),
                                   ),
-                                  if (_suggestion!.weightChange != 0) ...[
-                                    const SizedBox(width: 8),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                physics: const BouncingScrollPhysics(),
+                                child: Row(
+                                  children: _getRecentSessions().asMap().entries.map((
+                                    entry,
+                                  ) {
+                                    final index = entry.key;
+                                    final h = entry.value;
+                                    final weightStr = h.weight
+                                        .toStringAsFixed(1)
+                                        .replaceAll(RegExp(r'\.0$'), '');
+                                    final date = h.timestamp;
+                                    final months = [
+                                      'Jan',
+                                      'Feb',
+                                      'Mar',
+                                      'Apr',
+                                      'May',
+                                      'Jun',
+                                      'Jul',
+                                      'Aug',
+                                      'Sep',
+                                      'Oct',
+                                      'Nov',
+                                      'Dec',
+                                    ];
+                                    final dateStr =
+                                        '${months[date.month - 1]} ${date.day}';
+                                    final label = index == 0
+                                        ? 'LATEST'
+                                        : (index == 1
+                                              ? 'PREV'
+                                              : (index == 2
+                                                    ? '3RD'
+                                                    : '${index + 1}TH'));
+
+                                    return Container(
+                                      margin: const EdgeInsets.only(right: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: index == 0 ? 0.08 : 0.04,
+                                        ),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(
+                                            alpha: index == 0 ? 0.15 : 0.05,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '$label • ${dateStr.toUpperCase()}',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w900,
+                                              color: Colors.white.withValues(
+                                                alpha: 0.5,
+                                              ),
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          RichText(
+                                            text: TextSpan(
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontFamily: 'StackSansText',
+                                              ),
+                                              children: [
+                                                TextSpan(
+                                                  text: weightStr,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize: 22,
+                                                  ),
+                                                ),
+                                                TextSpan(
+                                                  text: ' lbs ',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white
+                                                        .withValues(alpha: 0.6),
+                                                  ),
+                                                ),
+                                                TextSpan(
+                                                  text: '× ${h.reps}',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 18,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (_suggestion != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .secondaryContainer
+                                .withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.secondary.withValues(alpha: 0.15),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.auto_awesome,
+                                        size: 18,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.secondary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'RECOMMENDED',
+                                        style: TextStyle(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.secondary,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 14,
+                                          letterSpacing: 1,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (_suggestion!.weightChange != 0)
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
+                                        horizontal: 8,
+                                        vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
                                         color:
@@ -708,33 +802,99 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                                                     ? Colors.green
                                                     : Colors.orange)
                                                 .withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(4),
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
                                         _suggestion!.weightChange! > 0
                                             ? '+${_suggestion!.weightChange}'
                                             : '${_suggestion!.weightChange}',
                                         style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w900,
                                           color: _suggestion!.weightChange! > 0
                                               ? Colors.green
                                               : Colors.orange,
                                         ),
                                       ),
                                     ),
-                                  ],
                                 ],
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _suggestion!.reasoning,
-                                style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                  fontSize: 12,
-                                  fontStyle: FontStyle.italic,
+                              const SizedBox(height: 12),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '${_suggestion!.weight}'.replaceAll(
+                                      RegExp(r'\.0$'),
+                                      '',
+                                    ),
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSecondaryContainer,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 28,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'lbs',
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.secondary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    child: Text(
+                                      '×',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${_suggestion!.reps}',
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSecondaryContainer,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 28,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  _suggestion!.reasoning.replaceAll(
+                                    RegExp(r'\.0'),
+                                    '',
+                                  ),
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSecondaryContainer
+                                        .withValues(alpha: 0.9),
+                                    fontSize: 15,
+                                    fontStyle: FontStyle.italic,
+                                    height: 1.4,
+                                  ),
                                 ),
                               ),
                             ],
@@ -750,23 +910,52 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final isWarmupSet = _warmupSetEnabled && index == 0;
+                    final isCurrentSet = index == _lastFocusedSet;
                     return Padding(
+                      key: _setKeys[index],
                       padding: const EdgeInsets.only(bottom: 12.0),
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: isWarmupSet
-                              ? Colors.orange.withValues(alpha: 0.1)
-                              : Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest
-                                    .withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(20),
+                          color: isCurrentSet
+                              ? (isWarmupSet
+                                    ? Colors.orange.withValues(alpha: 0.2)
+                                    : Theme.of(context).colorScheme.primary
+                                          .withValues(alpha: 0.15))
+                              : (isWarmupSet
+                                    ? Colors.orange.withValues(alpha: 0.1)
+                                    : Theme.of(context)
+                                          .colorScheme
+                                          .surfaceContainerHighest
+                                          .withValues(alpha: 0.3)),
+                          borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: isWarmupSet
-                                ? Colors.orange.withValues(alpha: 0.3)
-                                : Colors.white.withValues(alpha: 0.05),
+                            color: isCurrentSet
+                                ? (isWarmupSet
+                                      ? Colors.orange.withValues(alpha: 0.6)
+                                      : Theme.of(context).colorScheme.primary
+                                            .withValues(alpha: 0.5))
+                                : (isWarmupSet
+                                      ? Colors.orange.withValues(alpha: 0.3)
+                                      : Colors.white.withValues(alpha: 0.05)),
+                            width: isCurrentSet ? 2 : 1,
                           ),
+                          boxShadow: isCurrentSet
+                              ? [
+                                  BoxShadow(
+                                    color:
+                                        (isWarmupSet
+                                                ? Colors.orange
+                                                : Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary)
+                                            .withValues(alpha: 0.1),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : [],
                         ),
                         child: Row(
                           children: [
@@ -918,13 +1107,13 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
+                        child: TextButton.icon(
                           onPressed: _removeSet,
-                          icon: const Icon(Icons.remove),
+                          icon: const Icon(Icons.remove, size: 18),
                           label: const Text('REMOVE SET'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white70,
-                            side: const BorderSide(color: Colors.white24),
+                          style: TextButton.styleFrom(
+                            backgroundColor: const Color(0xFF2C2C2C),
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
@@ -934,15 +1123,13 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: OutlinedButton.icon(
+                        child: TextButton.icon(
                           onPressed: _addSet,
-                          icon: const Icon(Icons.add),
+                          icon: const Icon(Icons.add, size: 18),
                           label: const Text('ADD SET'),
-                          style: OutlinedButton.styleFrom(
+                          style: TextButton.styleFrom(
+                            backgroundColor: const Color(0xFF3B562D),
                             foregroundColor: Colors.white,
-                            side: BorderSide(
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),

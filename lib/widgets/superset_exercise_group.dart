@@ -80,7 +80,7 @@ class SupersetExerciseGroup extends StatelessWidget {
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.5,
-                    fontSize: 12,
+                    fontSize: 14,
                   ),
                 ),
               ],
@@ -129,7 +129,7 @@ class SupersetExerciseGroup extends StatelessWidget {
                                   : Theme.of(context).colorScheme.onSurface
                                         .withValues(alpha: 0.7),
                               fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              fontSize: 16,
                             ),
                           ),
                         ),

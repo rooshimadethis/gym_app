@@ -41,7 +41,7 @@ class AlternativeExerciseGroup extends StatelessWidget {
                 Text(
                   'ALTERNATIVES',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     fontWeight: FontWeight.w900,
                     color: Theme.of(context).colorScheme.primary,
                     letterSpacing: 1.2,
