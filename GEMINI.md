@@ -40,7 +40,7 @@ This is a Flutter gym application ("rooshi's get swole") designed for users in b
 - `OpenContainer` animations are used but have been noted as "hard to do" in previous notes.
 
 # Recent Additions (Phase 3 & 4)
-- **Session Management:** `WorkoutSessionManager` handles active workout state.
+- **Session Management:** `WorkoutSessionManager` handles active workout state and enforces a 4-hour session timeout.
 - **Fatigue Tracking:** `FatigueCheckInModal` captures user "freshness" (-1, 0, 1) per exercise.
 - **Context-Aware Suggestions:** `SuggestionEngine` recommends weights based on history and fatigue.
 - **Priority System:** `PriorityManager` flags exercises not performed "fresh" in >7 days.

@@ -485,7 +485,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
   @override
   Widget build(BuildContext context) {
     final placeHolderImageUrl =
-        'https://placehold.co/400x200.png?text=${Uri.encodeComponent(widget.exercise.name)}';
+        'https://placehold.co/400x200/0A0A0A/FFFFFF.png?text=${Uri.encodeComponent(widget.exercise.name)}';
     final isLastSetFocused = _lastFocusedSet == widget.exercise.sets.length - 1;
 
     return Scaffold(

@@ -58,7 +58,7 @@ class _ExerciseCardState extends State<ExerciseCard>
   @override
   Widget build(BuildContext context) {
     final placeHolderImageUrl =
-        'https://placehold.co/400x200.png?text=${Uri.encodeComponent(widget.exercise.name)}';
+        'https://placehold.co/400x200/0A0A0A/FFFFFF.png?text=${Uri.encodeComponent(widget.exercise.name)}';
 
     return ScaleTransition(
       scale: _scaleAnimation,

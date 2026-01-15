@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
+
+import 'package:gym_app/services/rest_timer_manager.dart';
 
 class WorkoutSessionManager extends ChangeNotifier {
   static final WorkoutSessionManager _instance =
@@ -11,6 +14,8 @@ class WorkoutSessionManager extends ChangeNotifier {
 
   String? _currentSessionId;
   DateTime? _sessionStartTime;
+
+  Timer? _autoEndTimer;
 
   static const String _prefSessionIdKey = 'current_session_id';
   static const String _prefStartTimeKey = 'current_session_start_time';
@@ -26,6 +31,9 @@ class WorkoutSessionManager extends ChangeNotifier {
       _sessionStartTime = DateTime.tryParse(startTimeIso);
     }
     await _checkAutoEnd();
+    if (isWorkoutActive) {
+      _startAutoEndTimer();
+    }
   }
 
   Future<void> _checkAutoEnd() async {
@@ -33,6 +41,23 @@ class WorkoutSessionManager extends ChangeNotifier {
       final difference = DateTime.now().difference(_sessionStartTime!);
       if (difference.inHours >= 4) {
         await endWorkout();
+      }
+    }
+  }
+
+  void _startAutoEndTimer() {
+    _autoEndTimer?.cancel();
+    if (_sessionStartTime != null) {
+      final now = DateTime.now();
+      final difference = now.difference(_sessionStartTime!);
+      final remaining = const Duration(hours: 4) - difference;
+
+      if (remaining.isNegative) {
+        endWorkout();
+      } else {
+        _autoEndTimer = Timer(remaining, () {
+          endWorkout();
+        });
       }
     }
   }
@@ -49,10 +74,17 @@ class WorkoutSessionManager extends ChangeNotifier {
       _prefStartTimeKey,
       _sessionStartTime!.toIso8601String(),
     );
+    _startAutoEndTimer();
     notifyListeners();
   }
 
   Future<void> endWorkout() async {
+    _autoEndTimer?.cancel();
+    _autoEndTimer = null;
+
+    // Stop the rest timer and foreground service if running
+    RestTimerManager.instance.stop();
+
     _currentSessionId = null;
     _sessionStartTime = null;
 
