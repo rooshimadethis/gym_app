@@ -62,23 +62,42 @@ class _ExerciseCardState extends State<ExerciseCard>
       scale: _scaleAnimation,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15.0),
+          borderRadius: BorderRadius.circular(20.0),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Theme.of(context).colorScheme.surface,
+              Theme.of(context).colorScheme.surfaceContainerHighest,
+            ],
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha((255 * 0.3).round()),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
               spreadRadius: 1,
-              blurRadius: 10,
-              offset: const Offset(0, 5),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              spreadRadius: 0,
+              blurRadius: 5,
+              offset: const Offset(0, 2),
             ),
           ],
+          border: Border.all(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+            width: 1,
+          ),
         ),
         child: GestureDetector(
           onLongPress: widget.onLongPress,
           child: OpenContainer(
             tappable: false,
-            closedColor: Theme.of(context).colorScheme.primary,
+            // Use surface color to match the container background
+            closedColor: Colors.transparent,
             closedShape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15.0),
+              borderRadius: BorderRadius.circular(20.0),
             ),
             closedElevation: 0.0,
             transitionDuration: const Duration(milliseconds: 300),
@@ -111,46 +130,69 @@ class _ExerciseCardState extends State<ExerciseCard>
                   Future.delayed(const Duration(milliseconds: 100), action);
                 },
                 child: AspectRatio(
-                  aspectRatio: 2 / 1,
-                  child: Card(
-                    elevation: 0,
-                    color: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15.0),
+                  aspectRatio: 2.2 / 1, // Slightly wider for a more cinematic look
+                  child: Container(
+                     decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20.0),
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: Column(
+                    child: Stack(
+                      fit: StackFit.expand,
                       children: [
-                        Expanded(
-                          child:
-                              widget.exercise.hasLocalImage &&
-                                  widget.exercise.imageUrl != null
-                              ? Image.asset(
-                                  widget.exercise.imageUrl!,
-                                  fit: BoxFit.contain,
-                                  width: double.infinity,
-                                )
-                              : CachedNetworkImage(
-                                  imageUrl: placeHolderImageUrl,
-                                  fit: BoxFit.contain,
-                                  width: double.infinity,
-                                  placeholder: (context, url) =>
-                                      Container(color: Colors.grey[300]),
-                                  errorWidget: (context, url, error) =>
-                                      const Icon(Icons.error),
-                                ),
+                        // Background Image with gradient overlay
+                        widget.exercise.hasLocalImage && widget.exercise.imageUrl != null
+                          ? Image.asset(
+                              widget.exercise.imageUrl!,
+                              fit: BoxFit.cover,
+                            )
+                          : CachedNetworkImage(
+                              imageUrl: placeHolderImageUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) =>
+                                  Container(color: Colors.grey[900]),
+                              errorWidget: (context, url, error) =>
+                                  const Icon(Icons.error),
+                            ),
+                        // Gradient Overlay for text readability
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.8),
+                              ],
+                              stops: const [0.5, 1.0],
+                            ),
+                          ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text(
-                            widget.exercise.name,
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimary,
-                                ),
+                        // Text Content
+                        Align(
+                          alignment: Alignment.bottomLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(
+                              widget.exercise.name,
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: 0.5,
+                                  ),
+                            ),
+                          ),
+                        ),
+                        // Decoration/Icon at top right (optional, maybe type icon?)
+                        Align(
+                          alignment: Alignment.topRight,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Icon(
+                              Icons.fitness_center, // Placeholder icon
+                              color: Colors.white.withValues(alpha: 0.5),
+                              size: 24,
+                            ),
                           ),
                         ),
                       ],
