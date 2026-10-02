@@ -2,10 +2,16 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "gym_app (CPH2551)",
+            "name": "gym_app (HiBreak)",
             "request": "launch",
             "type": "dart",
-            "deviceId": "e6600b0"
+            "deviceId": "B651DNW2FLKB006000379"
+        },
+        {
+            "name": "gym_app (Connected Android)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "android"
         },
         {
             "name": "gym_app (iOS Simulator)",
@@ -18,12 +24,6 @@
             "request": "launch",
             "type": "dart",
             "preLaunchTask": "Launch Pixel 9"
-        },
-        {
-            "name": "gym_app (Pixel 9 Pro Fold)",
-            "request": "launch",
-            "type": "dart",
-            "preLaunchTask": "Launch Pixel 9 Pro Fold"
         },
         {
             "name": "gym_app (Pixel 9 Pro Fold (2))",

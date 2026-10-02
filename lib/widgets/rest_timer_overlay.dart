@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gym_app/services/rest_timer_manager.dart';
@@ -12,7 +13,7 @@ class RestTimerOverlay extends StatefulWidget {
 
 class _RestTimerOverlayState extends State<RestTimerOverlay>
     with SingleTickerProviderStateMixin {
-  Offset _offset = const Offset(20, 100); // Initial position from bottom-right
+  Offset _offset = const Offset(20, 110); // Initial position from top-right
   late AnimationController _inertiaController;
   Animation<Offset>? _inertiaAnimation;
 
@@ -43,6 +44,9 @@ class _RestTimerOverlayState extends State<RestTimerOverlay>
     return '$minutesStr:$secondsStr';
   }
 
+  final GlobalKey _containerKey = GlobalKey();
+  double _containerWidth = 300; // Fallback initial width
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -51,6 +55,18 @@ class _RestTimerOverlayState extends State<RestTimerOverlay>
         if (!RestTimerManager.instance.isActive) {
           return const SizedBox.shrink();
         }
+
+        // Measure width after build
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_containerKey.currentContext != null) {
+            final size = _containerKey.currentContext!.size;
+            if (size != null && size.width != _containerWidth) {
+              // Only update if width changed to render loop
+              // We don't setState here to avoid infinite loops, but we use this value for clamping
+              _containerWidth = size.width;
+            }
+          }
+        });
 
         final elapsed = RestTimerManager.instance.elapsedMilliseconds;
         final duration = RestTimerManager.instance.timerDuration * 1000;
@@ -62,15 +78,18 @@ class _RestTimerOverlayState extends State<RestTimerOverlay>
 
         return Positioned(
           right: _offset.dx,
-          bottom: _offset.dy,
+          top: _offset.dy,
           child: GestureDetector(
             onPanStart: (_) => _inertiaController.stop(),
             onPanUpdate: (details) {
               setState(() {
                 final size = MediaQuery.of(context).size;
+                // Use dynamic _containerWidth + small buffer (e.g. 10) for left clamp
+                final maxDx = math.max(10.0, size.width - _containerWidth - 10);
+                final maxDy = math.max(60.0, size.height - 150);
                 _offset = Offset(
-                  (_offset.dx - details.delta.dx).clamp(10, size.width - 250),
-                  (_offset.dy - details.delta.dy).clamp(10, size.height - 200),
+                  (_offset.dx - details.delta.dx).clamp(10.0, maxDx),
+                  (_offset.dy + details.delta.dy).clamp(60.0, maxDy),
                 );
               });
             },
@@ -80,14 +99,18 @@ class _RestTimerOverlayState extends State<RestTimerOverlay>
 
               if (magnitude > 200) {
                 final size = MediaQuery.of(context).size;
+                final maxDx = math.max(10.0, size.width - _containerWidth - 10);
+                final maxDy = math.max(60.0, size.height - 150);
+
                 // Calculate inertia target based on velocity
                 // We multiply by a factor (0.2) to simulate travel distance
+                // For Top positioning: +velocity.dy means moving down (increasing top)
                 final target =
-                    _offset + Offset(-velocity.dx, -velocity.dy) * 0.2;
+                    _offset + Offset(-velocity.dx, velocity.dy) * 0.2;
 
                 final clampedTarget = Offset(
-                  target.dx.clamp(10, size.width - 250),
-                  target.dy.clamp(10, size.height - 200),
+                  target.dx.clamp(10.0, maxDx),
+                  target.dy.clamp(60.0, maxDy),
                 );
 
                 _inertiaAnimation =
@@ -104,7 +127,7 @@ class _RestTimerOverlayState extends State<RestTimerOverlay>
                 _inertiaController.forward(from: 0);
 
                 // Haptic feedback for flick
-                if (clampedTarget.dy > size.height - 250) {
+                if (clampedTarget.dy < 100) {
                   HapticFeedback.mediumImpact();
                 } else {
                   HapticFeedback.lightImpact();
@@ -121,6 +144,7 @@ class _RestTimerOverlayState extends State<RestTimerOverlay>
               child: Material(
                 type: MaterialType.transparency,
                 child: Container(
+                  key: _containerKey,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(40),
                     boxShadow: [
@@ -146,10 +170,14 @@ class _RestTimerOverlayState extends State<RestTimerOverlay>
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.08),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surface.withValues(alpha: 0.8),
                           borderRadius: BorderRadius.circular(40),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.12),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.1),
                             width: 1.5,
                           ),
                         ),
@@ -176,9 +204,10 @@ class _RestTimerOverlayState extends State<RestTimerOverlay>
                                       value: progress,
                                       strokeWidth: 6,
                                       color: color,
-                                      backgroundColor: Colors.white.withValues(
-                                        alpha: 0.05,
-                                      ),
+                                      backgroundColor: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.05),
                                       strokeCap: StrokeCap.round,
                                     ),
                                   ),
@@ -236,7 +265,9 @@ class _RestTimerOverlayState extends State<RestTimerOverlay>
                                       fontSize: 32,
                                       height: 1.1,
                                       fontWeight: FontWeight.w900,
-                                      color: Colors.white,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
                                       fontFamily: 'StackSansText',
                                       fontFeatures: const [
                                         FontFeature.tabularFigures(),
@@ -265,12 +296,18 @@ class _RestTimerOverlayState extends State<RestTimerOverlay>
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.1),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(15),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.close_rounded,
-                                    color: Colors.white70,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
                                     size: 24,
                                   ),
                                 ),

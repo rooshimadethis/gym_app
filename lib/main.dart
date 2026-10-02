@@ -18,6 +18,7 @@ import 'package:gym_app/logic/priority_manager.dart';
 import 'package:gym_app/services/rest_timer_manager.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:gym_app/widgets/rest_timer_overlay.dart';
+import 'package:gym_app/services/theme_manager.dart';
 
 late AppDatabase db;
 
@@ -29,6 +30,7 @@ void startStopwatchCallback() {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   db = AppDatabase();
+  await ThemeManager.instance.init();
   await WorkoutSessionManager.instance.init();
   await RestTimerManager.instance.init();
   await FlutterDisplayMode.setHighRefreshRate();
@@ -66,62 +68,91 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'rooshi\'s get swole',
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'StackSansText',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF4C763B),
-          brightness: Brightness.light,
-          primary: const Color(0xFF4C763B),
-          surface: const Color(0xFFF8F9FA),
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          color: Colors.white,
-        ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'StackSansText',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF77A26D),
-          brightness: Brightness.dark,
-          primary: const Color(0xFF77A26D),
-          surface: const Color(0xFF121212),
-          onSurface: Colors.white,
-          surfaceContainerHighest: const Color(0xFF1E1E1E),
-        ),
-        scaffoldBackgroundColor: const Color(0xFF0A0A0A),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          centerTitle: false,
-          titleTextStyle: TextStyle(
+    return ListenableBuilder(
+      listenable: ThemeManager.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'rooshi\'s get swole',
+          theme: ThemeData(
+            useMaterial3: true,
             fontFamily: 'StackSansText',
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
-            color: Colors.white,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF4C763B),
+              brightness: Brightness.light,
+              primary: const Color(0xFF4C763B),
+              surface: const Color(0xFFFBFDF7),
+              onSurface: const Color(0xFF1A1C18),
+              surfaceContainerHighest: const Color(0xFFE1E4D5),
+            ),
+            scaffoldBackgroundColor: const Color(0xFFFBFDF7),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              centerTitle: false,
+              titleTextStyle: TextStyle(
+                fontFamily: 'StackSansText',
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+                color: Color(0xFF1A1C18),
+              ),
+              iconTheme: IconThemeData(color: Color(0xFF1A1C18)),
+            ),
+            cardTheme: CardThemeData(
+              elevation: 4,
+              shadowColor: Colors.black.withValues(alpha: 0.05),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              color: Colors.white,
+            ),
           ),
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            fontFamily: 'StackSansText',
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF77A26D),
+              brightness: Brightness.dark,
+              primary: const Color(0xFF77A26D),
+              surface: const Color(0xFF121212),
+              onSurface: Colors.white,
+              surfaceContainerHighest: const Color(0xFF1E1E1E),
+            ),
+            scaffoldBackgroundColor: const Color(0xFF0A0A0A),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              centerTitle: false,
+              titleTextStyle: TextStyle(
+                fontFamily: 'StackSansText',
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+                color: Colors.white,
+              ),
+              toolbarTextStyle: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+                color: Colors.white54,
+              ),
+              iconTheme: IconThemeData(color: Colors.white),
+            ),
+            cardTheme: CardThemeData(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              color: const Color(0xFF1E1E1E).withValues(alpha: 0.5),
+            ),
           ),
-          color: const Color(0xFF1A1A1A),
-        ),
-      ),
-      themeMode: ThemeMode.dark,
-      home: const MyHomePage(title: 'rooshi\'s get swole'),
-      builder: (context, child) {
-        return Stack(
-          children: [if (child != null) child, const RestTimerOverlay()],
+          themeMode: ThemeManager.instance.themeMode,
+          home: const MyHomePage(title: 'rooshi\'s get swole'),
+          builder: (context, child) {
+            return Stack(
+              children: [if (child != null) child, const RestTimerOverlay()],
+            );
+          },
         );
       },
     );
@@ -143,6 +174,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController _searchController = TextEditingController();
   Map<String, int> _supersetProgress =
       {}; // Track current position in each superset
+  String? _observedSessionId;
 
   final Map<String, String> _exerciseImageMap = {
     'Chest Press': 'assets/images/exercises/chest-press.webp',
@@ -172,11 +204,28 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    _observedSessionId = WorkoutSessionManager.instance.currentSessionId;
+    WorkoutSessionManager.instance.addListener(_handleWorkoutSessionChanged);
     _loadExercises();
     _loadSupersetProgress();
     _refreshPriorities(); // Initial priority fetch
     _searchController.addListener(() {
       filterExercises();
+    });
+  }
+
+  void _handleWorkoutSessionChanged() {
+    final currentSessionId = WorkoutSessionManager.instance.currentSessionId;
+    if (currentSessionId == _observedSessionId) return;
+
+    _observedSessionId = currentSessionId;
+    if (!mounted) return;
+
+    setState(() {
+      for (final exercise in _allExercises) {
+        exercise.resetSessionProgress();
+      }
+      _supersetProgress.updateAll((_, _) => 0);
     });
   }
 
@@ -304,7 +353,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   List<Exercise> _getSupersetExercises(String supersetId) {
-    return _filteredExercises.where((e) => e.supersetId == supersetId).toList()
+    return _allExercises.where((e) => e.supersetId == supersetId).toList()
       ..sort((a, b) => (a.supersetOrder ?? 0).compareTo(b.supersetOrder ?? 0));
   }
 
@@ -367,6 +416,11 @@ class _MyHomePageState extends State<MyHomePage> {
             .where((e) => e.supersetId == exercise.supersetId)
             .toList();
 
+        // Reset session-only state for all exercises in the completed superset.
+        for (var e in supersetExercises) {
+          e.resetSessionProgress();
+        }
+
         // Remove all from list
         _allExercises.removeWhere((e) => e.supersetId == exercise.supersetId);
 
@@ -385,6 +439,11 @@ class _MyHomePageState extends State<MyHomePage> {
             .where((e) => e.groupId == exercise.groupId)
             .toList();
 
+        // Reset session-only state for all alternatives in the completed group.
+        for (var e in groupExercises) {
+          e.resetSessionProgress();
+        }
+
         // Remove all from list
         _allExercises.removeWhere((e) => e.groupId == exercise.groupId);
 
@@ -392,6 +451,7 @@ class _MyHomePageState extends State<MyHomePage> {
         _allExercises.addAll(groupExercises);
       } else {
         // Single exercise
+        exercise.resetSessionProgress();
         _allExercises.remove(exercise);
         _allExercises.add(exercise);
       }
@@ -422,6 +482,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void dispose() {
+    WorkoutSessionManager.instance.removeListener(_handleWorkoutSessionChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -552,7 +613,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   decoration: InputDecoration(
                     hintText: 'Search exercises...',
                     hintStyle: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                     prefixIcon: Icon(
                       Icons.search,

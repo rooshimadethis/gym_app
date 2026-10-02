@@ -44,3 +44,10 @@ This is a Flutter gym application ("rooshi's get swole") designed for users in b
 - **Fatigue Tracking:** `FatigueCheckInModal` captures user "freshness" (-1, 0, 1) per exercise.
 - **Context-Aware Suggestions:** `SuggestionEngine` recommends weights based on history and fatigue.
 - **Priority System:** `PriorityManager` flags exercises not performed "fresh" in >7 days.
+- **Superset Flow:** Intelligent cycling logic checks for unfinished sets in the loop before cycling; otherwise, it auto-completes the workout.
+- **UX Refinements:**
+    - `currentSetIndex` resets to 0 when exercises (single, group, or superset) are completed and moved to the bottom.
+    - `RestTimerOverlay` defaults to Top-Right and uses dynamic width calculation to prevent clipping.
+- **Theme Management:**
+    - `ThemeManager` (Singleton) handles persistence and state for Light/Dark/System modes.
+    - Integrated multi-theme support across all major views including `ExerciseDetailView`, `SettingsPage`, and global overlays.

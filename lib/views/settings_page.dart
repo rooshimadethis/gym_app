@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gym_app/main.dart'; // for db access
+import 'package:gym_app/services/theme_manager.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -105,7 +106,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     // For now, let's treat "Cancel" as abort, and just add a separate "Keep & Append" button?
                     // Simplifying to: Import = Restore state.
                     await db.deleteAllHistory();
-                    Navigator.pop(context, true);
+                    if (context.mounted) {
+                      Navigator.pop(context, true);
+                    }
                   },
                   child: const Text(
                     'Clear & Import',
@@ -202,7 +205,8 @@ class _SettingsPageState extends State<SettingsPage> {
     data['history_data'] = history.map((e) => e.toJson()).toList();
 
     try {
-      Uint8List bytes = utf8.encode(jsonEncode(data));
+      final jsonString = jsonEncode(data);
+      final bytes = Uint8List.fromList(utf8.encode(jsonString));
 
       final now = DateTime.now();
       final year = now.year;
@@ -218,7 +222,7 @@ class _SettingsPageState extends State<SettingsPage> {
       String? path = await FileSaver.instance.saveAs(
         name: fileName,
         bytes: bytes,
-        ext: 'json',
+        fileExtension: 'json',
         mimeType: MimeType.json,
       );
 
@@ -251,75 +255,76 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings'), centerTitle: true),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        children: [
-          _buildSectionHeader('Data Management'),
-          _buildSettingTile(
-            icon: Icons.file_upload_outlined,
-            title: 'Import Exercise Data',
-            onTap: _importExerciseData,
-          ),
-          _buildSettingTile(
-            icon: Icons.file_download_outlined,
-            title: 'Export Exercise Data',
-            onTap: _exportExerciseData,
-          ),
-          const SizedBox(height: 24),
-          _buildSectionHeader('Preferences'),
-          SwitchListTile(
-            title: const Text(
-              'Notifications',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: const Text('Rest timer background alerts'),
-            value: _notificationsEnabled,
-            onChanged: _saveNotificationSetting,
-            secondary: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+    return ListenableBuilder(
+      listenable: ThemeManager.instance,
+      builder: (context, _) {
+        return Scaffold(
+          appBar: AppBar(title: const Text('Settings'), centerTitle: true),
+          body: ListView(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            children: [
+              _buildSectionHeader('Appearance'),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: SegmentedButton<ThemeMode>(
+                  style: SegmentedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.surface,
+                    selectedBackgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primary,
+                    selectedForegroundColor: Theme.of(
+                      context,
+                    ).colorScheme.onPrimary,
+                  ),
+                  segments: const [
+                    ButtonSegment(
+                      value: ThemeMode.system,
+                      icon: Icon(Icons.brightness_auto_outlined),
+                      label: Text('System'),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.light,
+                      icon: Icon(Icons.light_mode_outlined),
+                      label: Text('Light'),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.dark,
+                      icon: Icon(Icons.dark_mode_outlined),
+                      label: Text('Dark'),
+                    ),
+                  ],
+                  selected: {ThemeManager.instance.themeMode},
+                  onSelectionChanged: (Set<ThemeMode> newSelection) {
+                    ThemeManager.instance.setThemeMode(newSelection.first);
+                  },
+                ),
               ),
-              child: Icon(
-                Icons.notifications_outlined,
-                color: Theme.of(context).colorScheme.primary,
+              const SizedBox(height: 16),
+              _buildSectionHeader('Data Management'),
+              _buildSettingTile(
+                icon: Icons.file_upload_outlined,
+                title: 'Import Exercise Data',
+                onTap: _importExerciseData,
               ),
-            ),
-          ),
-          SwitchListTile(
-            title: const Text(
-              'Warmup Set',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: const Text('Skip auto-fill for the first set'),
-            value: _warmupSetEnabled,
-            onChanged: _saveWarmupSetSetting,
-            secondary: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+              _buildSettingTile(
+                icon: Icons.file_download_outlined,
+                title: 'Export Exercise Data',
+                onTap: _exportExerciseData,
               ),
-              child: Icon(
-                Icons.fitness_center_outlined,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          _buildSectionHeader('Timer Configuration'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Container(
+              const SizedBox(height: 24),
+              _buildSectionHeader('Preferences'),
+              SwitchListTile(
+                title: const Text(
+                  'Notifications',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('Rest timer background alerts'),
+                value: _notificationsEnabled,
+                onChanged: _saveNotificationSetting,
+                secondary: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Theme.of(
@@ -328,43 +333,94 @@ class _SettingsPageState extends State<SettingsPage> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
-                    Icons.timer_outlined,
+                    Icons.notifications_outlined,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Text(
-                    'Rest Duration (seconds)',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SwitchListTile(
+                title: const Text(
+                  'Warmup Set',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('Skip auto-fill for the first set'),
+                value: _warmupSetEnabled,
+                onChanged: _saveWarmupSetSetting,
+                secondary: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.fitness_center_outlined,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
-                SizedBox(
-                  width: 80,
-                  child: TextField(
-                    controller: _timerController,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: _saveTimerDuration,
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                      isDense: true,
-                      border: OutlineInputBorder(
+              ),
+              const SizedBox(height: 24),
+              _buildSectionHeader('Timer Configuration'),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
+                      child: Icon(
+                        Icons.timer_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Text(
+                        'Rest Duration (seconds)',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 80,
+                      child: TextField(
+                        controller: _timerController,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        onChanged: _saveTimerDuration,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                          ),
+                          isDense: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

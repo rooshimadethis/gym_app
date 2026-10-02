@@ -6,10 +6,23 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/native.dart';
 
+import 'package:gym_app/database/database.dart';
 import 'package:gym_app/main.dart';
 
 void main() {
+  late AppDatabase testDatabase;
+
+  setUp(() {
+    testDatabase = AppDatabase.forTesting(NativeDatabase.memory());
+    db = testDatabase;
+  });
+
+  tearDown(() async {
+    await testDatabase.close();
+  });
+
   testWidgets('Title is displayed', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp());

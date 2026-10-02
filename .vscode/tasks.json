@@ -2,6 +2,19 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Flutter Run (HiBreak)",
+            "type": "shell",
+            "command": "flutter run -d B651DNW2FLKB006000379",
+            "problemMatcher": [
+                "$dart-sdk"
+            ],
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
             "label": "Launch iOS Simulator",
             "type": "shell",
             "command": "open -a Simulator || flutter emulators --launch apple_ios_simulator",
@@ -12,15 +25,7 @@
         {
             "label": "Launch Pixel 9",
             "type": "shell",
-            "command": "pgrep -f Pixel_9 > /dev/null || flutter emulators --launch Pixel_9",
-            "presentation": {
-                "reveal": "silent"
-            }
-        },
-        {
-            "label": "Launch Pixel 9 Pro Fold",
-            "type": "shell",
-            "command": "pgrep -f Pixel_9_Pro_Fold > /dev/null || flutter emulators --launch Pixel_9_Pro_Fold",
+            "command": "pgrep -f \" -avd Pixel_9 \" > /dev/null || (flutter emulators --launch Pixel_9 > /dev/null 2>&1 &)",
             "presentation": {
                 "reveal": "silent"
             }
@@ -28,7 +33,7 @@
         {
             "label": "Launch Pixel 9 Pro Fold (2)",
             "type": "shell",
-            "command": "pgrep -f Pixel_9_Pro_Fold_2 > /dev/null || flutter emulators --launch Pixel_9_Pro_Fold_2",
+            "command": "pgrep -f \" -avd Pixel_9_Pro_Fold_2 \" > /dev/null || (flutter emulators --launch Pixel_9_Pro_Fold_2 > /dev/null 2>&1 &)",
             "presentation": {
                 "reveal": "silent"
             }

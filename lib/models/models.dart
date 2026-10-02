@@ -19,6 +19,9 @@ class Exercise {
   String? supersetId;
   int? supersetOrder;
   bool isHighPriority;
+  int? sessionFatigueScore;
+  int currentSetIndex;
+  Set<int> sessionCompletedSetIndices;
 
   Exercise({
     required this.name,
@@ -29,7 +32,11 @@ class Exercise {
     this.supersetId,
     this.supersetOrder,
     this.isHighPriority = false,
-  }) : sets = sets ?? [SetData(), SetData(), SetData()];
+    this.sessionFatigueScore,
+    this.currentSetIndex = 0,
+    Set<int>? sessionCompletedSetIndices,
+  }) : sets = sets ?? [SetData(), SetData(), SetData()],
+       sessionCompletedSetIndices = sessionCompletedSetIndices ?? <int>{};
 
   Map<String, dynamic> toJson() => {
     'name': name,
@@ -57,4 +64,19 @@ class Exercise {
 
   bool get isPartOfGroup => groupId != null && groupId!.isNotEmpty;
   bool get isPartOfSuperset => supersetId != null && supersetId!.isNotEmpty;
+
+  bool get isSessionComplete =>
+      sets.isNotEmpty && sessionCompletedSetIndices.length >= sets.length;
+
+  void markSetCompleted(int index) {
+    if (index >= 0 && index < sets.length) {
+      sessionCompletedSetIndices.add(index);
+    }
+  }
+
+  void resetSessionProgress() {
+    currentSetIndex = 0;
+    sessionFatigueScore = null;
+    sessionCompletedSetIndices.clear();
+  }
 }

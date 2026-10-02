@@ -107,6 +107,17 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // Restore state from model
+    _lastFocusedSet = widget.exercise.currentSetIndex;
+    if (_lastFocusedSet >= widget.exercise.sets.length) {
+      _lastFocusedSet = widget.exercise.sets.length - 1;
+    }
+
+    if (widget.exercise.sessionFatigueScore != null) {
+      _fatigueScore = widget.exercise.sessionFatigueScore;
+    }
+
     _loadSettings();
     _loadHistory();
     _initializeControllersAndFocusNodes();
@@ -115,6 +126,9 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
       if (WorkoutSessionManager.instance.isWorkoutActive &&
           _fatigueScore == null) {
         _triggerFatigueCheckIn();
+      } else {
+        // If we restored focus, scroll to it
+        _scrollToSet(_lastFocusedSet);
       }
     });
   }
@@ -137,6 +151,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
 
     setState(() {
       _fatigueScore = score ?? 0;
+      widget.exercise.sessionFatigueScore = _fatigueScore;
     });
     _generateSuggestion(); // Regenerate based on actual fatigue check-in
   }
@@ -222,12 +237,14 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
       _weightFocusNodes[i].addListener(() {
         if (_weightFocusNodes[i].hasFocus) {
           setState(() => _lastFocusedSet = i);
+          widget.exercise.currentSetIndex = i;
           _scrollToSet(i);
         }
       });
       _repsFocusNodes[i].addListener(() {
         if (_repsFocusNodes[i].hasFocus) {
           setState(() => _lastFocusedSet = i);
+          widget.exercise.currentSetIndex = i;
           _scrollToSet(i);
         }
       });
@@ -281,12 +298,14 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
       _weightFocusNodes[newIndex].addListener(() {
         if (_weightFocusNodes[newIndex].hasFocus) {
           setState(() => _lastFocusedSet = newIndex);
+          widget.exercise.currentSetIndex = newIndex;
           _scrollToSet(newIndex);
         }
       });
       _repsFocusNodes[newIndex].addListener(() {
         if (_repsFocusNodes[newIndex].hasFocus) {
           setState(() => _lastFocusedSet = newIndex);
+          widget.exercise.currentSetIndex = newIndex;
           _scrollToSet(newIndex);
         }
       });
@@ -306,11 +325,16 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
         if (_lastFocusedSet >= widget.exercise.sets.length) {
           _lastFocusedSet = widget.exercise.sets.length - 1;
         }
+        widget.exercise.sessionCompletedSetIndices.removeWhere(
+          (index) => index >= widget.exercise.sets.length,
+        );
+        widget.exercise.currentSetIndex = _lastFocusedSet;
       });
     }
   }
 
   Future<void> _logSet({bool finish = false}) async {
+    final loggedSetIndex = _lastFocusedSet;
     final weight = _weightControllers[_lastFocusedSet].text;
     if (weight.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -340,20 +364,24 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
       double.tryParse(weight) ?? 0,
       int.tryParse(_repsControllers[_lastFocusedSet].text) ?? 0,
     );
+    widget.exercise.markSetCompleted(loggedSetIndex);
 
     // Refresh history so the "Last:" widget and Suggestion Engine update
     await _loadHistory();
 
     if (!mounted) return;
 
-    if (finish) {
+    final isSuperset =
+        widget.exercise.isPartOfSuperset && widget.getSupersetInfo != null;
+
+    if (finish && !isSuperset) {
       widget.onExerciseCompleted();
       Navigator.pop(context);
       return;
     }
 
     // Check if exercise is part of superset
-    if (widget.exercise.isPartOfSuperset && widget.getSupersetInfo != null) {
+    if (isSuperset) {
       _handleSupersetLogSet();
     } else {
       _handleStandardLogSet();
@@ -364,6 +392,22 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
     final supersetInfo = widget.getSupersetInfo!(widget.exercise);
 
     if (supersetInfo.isLastInSuperset) {
+      // Alternatives share one superset position, so completing any choice
+      // completes that position for the current session.
+      final nextLoopIsComplete = supersetInfo.nextExercises.any(
+        (exercise) => exercise.isSessionComplete,
+      );
+
+      if (nextLoopIsComplete) {
+        if (widget.exercise.isSessionComplete) {
+          widget.onExerciseCompleted();
+          Navigator.pop(context);
+        } else {
+          _handleStandardLogSet();
+        }
+        return;
+      }
+
       // Last exercise in superset -> Show rest timer, THEN "Next Exercise" back to first
       _showRestThenCycleSuperset(supersetInfo);
     } else {
@@ -390,8 +434,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
         totalExercises: info.totalExercises,
       ),
     ).then((selectedExercise) {
-      // NOW call onExerciseCompleted to cycle superset to bottom
-      widget.onExerciseCompleted();
+      widget.onSupersetProgress?.call();
 
       if (mounted && selectedExercise != null) {
         Navigator.pushReplacement(
@@ -497,7 +540,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                 expandedHeight: 170,
                 pinned: true,
                 stretch: true,
-                backgroundColor: const Color(0xFF0A0A0A),
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                 flexibleSpace: FlexibleSpaceBar(
                   stretchModes: const [
                     StretchMode.zoomBackground,
@@ -527,10 +570,16 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              const Color(0xFF0A0A0A).withValues(alpha: 0.0),
-                              const Color(0xFF0A0A0A).withValues(alpha: 0.2),
-                              const Color(0xFF0A0A0A).withValues(alpha: 0.7),
-                              const Color(0xFF0A0A0A),
+                              Theme.of(
+                                context,
+                              ).scaffoldBackgroundColor.withValues(alpha: 0.0),
+                              Theme.of(
+                                context,
+                              ).scaffoldBackgroundColor.withValues(alpha: 0.2),
+                              Theme.of(
+                                context,
+                              ).scaffoldBackgroundColor.withValues(alpha: 0.7),
+                              Theme.of(context).scaffoldBackgroundColor,
                             ],
                             stops: const [0.0, 0.3, 0.7, 1.0],
                           ),
@@ -542,16 +591,18 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                         bottom: 16,
                         child: Text(
                           widget.exercise.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 40,
                             fontWeight: FontWeight.w900,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onSurface,
                             letterSpacing: -1.5,
                             height: 0.95,
                             shadows: [
                               Shadow(
-                                color: Colors.black45,
-                                offset: Offset(0, 2),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.1),
+                                offset: const Offset(0, 2),
                                 blurRadius: 4,
                               ),
                             ],
@@ -719,7 +770,10 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.2),
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSecondaryContainer
+                                      .withValues(alpha: 0.05),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
@@ -832,14 +886,20 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                                         vertical: 10,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(
-                                          alpha: index == 0 ? 0.08 : 0.04,
-                                        ),
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(
+                                              alpha: index == 0 ? 0.08 : 0.04,
+                                            ),
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
-                                          color: Colors.white.withValues(
-                                            alpha: index == 0 ? 0.15 : 0.05,
-                                          ),
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withValues(
+                                                alpha: index == 0 ? 0.15 : 0.05,
+                                              ),
                                         ),
                                       ),
                                       child: Column(
@@ -851,17 +911,20 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                                             style: TextStyle(
                                               fontSize: 10,
                                               fontWeight: FontWeight.w900,
-                                              color: Colors.white.withValues(
-                                                alpha: 0.5,
-                                              ),
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.5),
                                               letterSpacing: 0.5,
                                             ),
                                           ),
                                           const SizedBox(height: 4),
                                           RichText(
                                             text: TextSpan(
-                                              style: const TextStyle(
-                                                color: Colors.white,
+                                              style: TextStyle(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurface,
                                                 fontFamily: 'StackSansText',
                                               ),
                                               children: [
@@ -877,7 +940,9 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                                                   style: TextStyle(
                                                     fontSize: 12,
                                                     fontWeight: FontWeight.bold,
-                                                    color: Colors.white
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurface
                                                         .withValues(alpha: 0.6),
                                                   ),
                                                 ),
@@ -938,7 +1003,8 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                                             .withValues(alpha: 0.5))
                                 : (isWarmupSet
                                       ? Colors.orange.withValues(alpha: 0.3)
-                                      : Colors.white.withValues(alpha: 0.05)),
+                                      : Theme.of(context).colorScheme.onSurface
+                                            .withValues(alpha: 0.05)),
                             width: isCurrentSet ? 2 : 1,
                           ),
                           boxShadow: isCurrentSet
@@ -1096,8 +1162,10 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    const Color(0xFF0A0A0A).withValues(alpha: 0.0),
-                    const Color(0xFF0A0A0A),
+                    Theme.of(
+                      context,
+                    ).scaffoldBackgroundColor.withValues(alpha: 0.0),
+                    Theme.of(context).scaffoldBackgroundColor,
                   ],
                 ),
               ),
@@ -1112,8 +1180,12 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                           icon: const Icon(Icons.remove, size: 18),
                           label: const Text('REMOVE SET'),
                           style: TextButton.styleFrom(
-                            backgroundColor: const Color(0xFF2C2C2C),
-                            foregroundColor: Colors.white,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.onSurface,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
@@ -1128,8 +1200,14 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                           icon: const Icon(Icons.add, size: 18),
                           label: const Text('ADD SET'),
                           style: TextButton.styleFrom(
-                            backgroundColor: const Color(0xFF3B562D),
-                            foregroundColor: Colors.white,
+                            backgroundColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF3B562D)
+                                : Colors.green.withValues(alpha: 0.15),
+                            foregroundColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.green.shade800,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),

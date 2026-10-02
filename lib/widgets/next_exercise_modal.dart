@@ -20,19 +20,21 @@ class NextExerciseModal extends StatelessWidget {
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'NEXT UP',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 2,
-                color: Colors.white54,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.5),
               ),
             ),
             const SizedBox(height: 24),
@@ -45,7 +47,7 @@ class NextExerciseModal extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                Icons.play_arrow_rounded,
+                Icons.loop_rounded,
                 size: 48,
                 color: Theme.of(context).colorScheme.primary,
               ),
@@ -53,8 +55,10 @@ class NextExerciseModal extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               'Exercise ${((currentPosition + 1) % totalExercises) + 1} of $totalExercises',
-              style: const TextStyle(
-                color: Colors.white70,
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
