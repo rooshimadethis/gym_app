@@ -6,12 +6,16 @@ import 'package:gym_app/services/rest_timer_manager.dart';
 import 'package:gym_app/widgets/next_exercise_modal.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:drift/drift.dart' as drift;
 import 'package:gym_app/database/database.dart';
 import 'package:gym_app/main.dart'; // to access global 'db'
 import 'package:gym_app/widgets/fatigue_check_in_modal.dart';
 import 'package:gym_app/services/workout_session_manager.dart';
 import 'package:gym_app/logic/suggestion_engine.dart';
+import 'package:gym_app/domain/gamification.dart';
+import 'package:gym_app/services/workout_feedback_settings.dart';
+import 'package:gym_app/services/gamification_service.dart';
+import 'package:gym_app/views/workout_completion_page.dart';
+import 'package:gym_app/widgets/workout_feedback_overlay.dart';
 import 'dart:io';
 
 class SupersetInfo {
@@ -59,6 +63,45 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
   late List<FocusNode> _weightFocusNodes;
   late List<FocusNode> _repsFocusNodes;
   late List<GlobalKey> _setKeys;
+  bool _isRecordingSet = false;
+
+  Future<String> _ensureExerciseAttempt() async {
+    final existing = widget.exercise.sessionAttemptId;
+    if (existing != null) return existing;
+
+    final sessionId = WorkoutSessionManager.instance.currentSessionId;
+    if (sessionId == null) {
+      throw StateError('Start a workout before recording a set.');
+    }
+    final attempt = await gamificationService.beginExerciseAttempt(
+      sessionId: sessionId,
+      exerciseId: widget.exercise.id,
+      exerciseName: widget.exercise.name,
+      groupId: widget.exercise.groupId,
+      supersetId: widget.exercise.supersetId,
+    );
+    widget.exercise.sessionAttemptId = attempt.attemptId;
+    return attempt.attemptId;
+  }
+
+  Future<void> _completeExerciseAttempt() async {
+    final attemptId = widget.exercise.sessionAttemptId;
+    if (attemptId == null) return;
+    final award = await gamificationService.completeExercise(
+      attemptId: attemptId,
+      tier: widget.exercise.xpTier,
+    );
+    if (!award.alreadyAwarded && mounted) {
+      showXpGainFeedback(context, xp: award.amount);
+      if (WorkoutFeedbackSettings.instance.hapticsEnabled) {
+        await HapticFeedback.mediumImpact();
+      }
+      if (WorkoutFeedbackSettings.instance.soundEnabled) {
+        await SystemSound.play(SystemSoundType.alert);
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 280));
+    }
+  }
 
   Future<void> _requestPermissions() async {
     final NotificationPermission notificationPermission =
@@ -164,8 +207,9 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
   }
 
   Future<void> _loadHistory() async {
-    final history = await db.getHistoryForExercise(
-      widget.exercise.name,
+    final history = await db.getPerformanceHistoryForExercise(
+      widget.exercise.id,
+      legacyExerciseName: widget.exercise.name,
       limit: 40, // Fetch more to ensure we cover multiple past sessions
     );
     if (mounted) {
@@ -334,6 +378,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
   }
 
   Future<void> _logSet({bool finish = false}) async {
+    if (_isRecordingSet) return;
     final loggedSetIndex = _lastFocusedSet;
     final weight = _weightControllers[_lastFocusedSet].text;
     if (weight.isEmpty) {
@@ -358,13 +403,44 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
       FocusScope.of(context).requestFocus(_repsFocusNodes[_lastFocusedSet + 1]);
     }
 
-    // Save changes (including prefill) to the model immediately
+    // Save changes (including prefill) to the model immediately.
     _saveData();
-    await _logHistory(
-      double.tryParse(weight) ?? 0,
-      int.tryParse(_repsControllers[_lastFocusedSet].text) ?? 0,
-    );
+    final sessionManager = WorkoutSessionManager.instance;
+    final sessionId = sessionManager.currentSessionId;
+    if (sessionId == null) return;
+    _isRecordingSet = true;
+    late final XpAward award;
+    try {
+      final attemptId = await _ensureExerciseAttempt();
+      final workoutPosition = await db.getExerciseSessionPosition(
+        sessionId,
+        widget.exercise.name,
+      );
+      award = await gamificationService.recordSuccessfulSet(
+        setAttemptId: '$attemptId:set:$loggedSetIndex',
+        attemptId: attemptId,
+        plannedSetIndex: loggedSetIndex,
+        weight: double.tryParse(weight) ?? 0,
+        reps: int.tryParse(_repsControllers[loggedSetIndex].text) ?? 0,
+        tier: widget.exercise.xpTier,
+        isWarmup: _warmupSetEnabled && loggedSetIndex == 0,
+        workoutPosition: workoutPosition,
+        fatigueScore: _fatigueScore ?? 0,
+      );
+    } finally {
+      _isRecordingSet = false;
+    }
     widget.exercise.markSetCompleted(loggedSetIndex);
+
+    if (!award.alreadyAwarded && mounted) {
+      showXpGainFeedback(context, xp: award.amount);
+      if (WorkoutFeedbackSettings.instance.hapticsEnabled) {
+        await HapticFeedback.lightImpact();
+      }
+      if (WorkoutFeedbackSettings.instance.soundEnabled) {
+        await SystemSound.play(SystemSoundType.click);
+      }
+    }
 
     // Refresh history so the "Last:" widget and Suggestion Engine update
     await _loadHistory();
@@ -375,6 +451,8 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
         widget.exercise.isPartOfSuperset && widget.getSupersetInfo != null;
 
     if (finish && !isSuperset) {
+      await _completeExerciseAttempt();
+      if (!mounted) return;
       widget.onExerciseCompleted();
       Navigator.pop(context);
       return;
@@ -382,13 +460,123 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
 
     // Check if exercise is part of superset
     if (isSuperset) {
-      _handleSupersetLogSet();
+      if (widget.exercise.isSessionComplete) {
+        await _completeExerciseAttempt();
+        if (!mounted) return;
+      }
+      await _handleSupersetLogSet();
     } else {
       _handleStandardLogSet();
     }
   }
 
-  void _handleSupersetLogSet() {
+  Future<void> _showFailedSetFlow() async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Couldn\'t finish this set?',
+                style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'The effort still earns set XP. This attempt won\'t replace your previous performance.',
+              ),
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('TRY AGAIN OR ADJUST WEIGHT'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, 'exercise'),
+                child: const Text('END EXERCISE FOR TODAY'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, 'workout'),
+                child: const Text('END WORKOUT FOR TODAY'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (action == null || !mounted) return;
+    await _recordFailedSetAndAbandon(endWorkout: action == 'workout');
+  }
+
+  Future<void> _recordFailedSetAndAbandon({required bool endWorkout}) async {
+    if (_isRecordingSet) return;
+    _saveData();
+    _isRecordingSet = true;
+    late final String attemptId;
+    late final XpAward award;
+    try {
+      attemptId = await _ensureExerciseAttempt();
+      award = await gamificationService.recordFailedSet(
+        setAttemptId: '$attemptId:set:$_lastFocusedSet',
+        attemptId: attemptId,
+        plannedSetIndex: _lastFocusedSet,
+        weight: double.tryParse(_weightControllers[_lastFocusedSet].text) ?? 0,
+        reps: int.tryParse(_repsControllers[_lastFocusedSet].text) ?? 0,
+        tier: widget.exercise.xpTier,
+      );
+    } finally {
+      _isRecordingSet = false;
+    }
+    await gamificationService.abandonExercise(attemptId);
+    widget.exercise
+      ..sessionAttemptId = null
+      ..currentSetIndex = 0
+      ..sessionCompletedSetIndices.clear();
+
+    if (!mounted) return;
+    if (!award.alreadyAwarded) {
+      showXpGainFeedback(context, xp: award.amount, effort: true);
+    }
+    if (WorkoutFeedbackSettings.instance.hapticsEnabled) {
+      await HapticFeedback.lightImpact();
+    }
+    if (WorkoutFeedbackSettings.instance.soundEnabled) {
+      await SystemSound.play(SystemSoundType.click);
+    }
+
+    if (!endWorkout) {
+      if (mounted) Navigator.pop(context);
+      return;
+    }
+
+    final endedSessionId = await WorkoutSessionManager.instance.endWorkout();
+    if (endedSessionId == null || !mounted) return;
+    final breakdown = await gamificationService.breakdownForSession(
+      endedSessionId,
+    );
+    final progress = await gamificationService.levelProgress;
+    final crossed = GamificationService.crossedLevels(
+      progress.lifetimeXp - breakdown.total,
+      progress.lifetimeXp,
+    );
+    if (!mounted) return;
+    await Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WorkoutCompletionPage(
+          breakdown: breakdown,
+          levelProgress: progress,
+          completedWorkout: breakdown.workoutCompletedXp > 0,
+          levelsCrossed: crossed,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleSupersetLogSet() async {
     final supersetInfo = widget.getSupersetInfo!(widget.exercise);
 
     if (supersetInfo.isLastInSuperset) {
@@ -497,39 +685,18 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
     RestTimerManager.instance.start();
   }
 
-  Future<void> _logHistory(double weight, int reps) async {
-    final sessionManager = WorkoutSessionManager.instance;
-    final sessionId =
-        sessionManager.currentSessionId ??
-        'standalone_${DateTime.now().toIso8601String()}';
-
-    int workoutPosition = 0;
-    if (sessionManager.isWorkoutActive &&
-        sessionManager.currentSessionId != null) {
-      workoutPosition = await db.getExerciseSessionPosition(
-        sessionId,
-        widget.exercise.name,
-      );
-    }
-
-    final entry = HistoryEntriesCompanion.insert(
-      exerciseName: widget.exercise.name,
-      weight: weight,
-      reps: reps,
-      isWarmup: drift.Value(_warmupSetEnabled && _lastFocusedSet == 0),
-      timestamp: DateTime.now(),
-      workoutPosition: workoutPosition,
-      fatigueScore: _fatigueScore ?? 0,
-      sessionId: sessionId,
-    );
-    await db.addHistoryEntry(entry);
-  }
-
   @override
   Widget build(BuildContext context) {
     final placeHolderImageUrl =
         'https://placehold.co/400x200/0A0A0A/FFFFFF.png?text=${Uri.encodeComponent(widget.exercise.name)}';
     final isLastSetFocused = _lastFocusedSet == widget.exercise.sets.length - 1;
+    final focusedSetCompletesExercise =
+        isLastSetFocused &&
+        List.generate(widget.exercise.sets.length, (index) => index).every(
+          (index) =>
+              index == _lastFocusedSet ||
+              widget.exercise.sessionCompletedSetIndices.contains(index),
+        );
 
     return Scaffold(
       body: Stack(
@@ -1222,29 +1389,13 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () async {
-                        HapticFeedback.mediumImpact();
-
                         final sessionManager = WorkoutSessionManager.instance;
 
                         // If no workout is active, start one first
                         if (!sessionManager.isWorkoutActive) {
-                          // Capture context-dependent values before async gap
-                          final messenger = ScaffoldMessenger.of(context);
-                          final primaryColor = Theme.of(
-                            context,
-                          ).colorScheme.primary;
-
                           await sessionManager.startWorkout();
-                          if (!mounted) return;
-
-                          // Show a brief confirmation
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: const Text('Workout started! 💪'),
-                              duration: const Duration(seconds: 1),
-                              backgroundColor: primaryColor,
-                            ),
-                          );
+                          if (!context.mounted) return;
+                          await showWorkoutStartCelebration(context);
 
                           // Regenerate suggestion or trigger fatigue check-in
                           if (_fatigueScore == null) {
@@ -1256,7 +1407,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                         }
 
                         // Normal flow when workout is active
-                        _logSet(finish: isLastSetFocused);
+                        _logSet(finish: focusedSetCompletesExercise);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Theme.of(context).colorScheme.primary,
@@ -1291,7 +1442,9 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                           }
 
                           return Text(
-                            isLastSetFocused ? 'FINISH EXERCISE' : 'LOG SET',
+                            focusedSetCompletesExercise
+                                ? 'FINISH EXERCISE'
+                                : 'LOG SET',
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
                               fontSize: 16,
@@ -1301,6 +1454,18 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                         },
                       ),
                     ),
+                  ),
+                  ListenableBuilder(
+                    listenable: WorkoutSessionManager.instance,
+                    builder: (context, _) {
+                      if (!WorkoutSessionManager.instance.isWorkoutActive) {
+                        return const SizedBox.shrink();
+                      }
+                      return TextButton(
+                        onPressed: _showFailedSetFlow,
+                        child: const Text('COULDN\'T FINISH THIS SET'),
+                      );
+                    },
                   ),
                 ],
               ),

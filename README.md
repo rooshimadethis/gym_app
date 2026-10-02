@@ -7,6 +7,8 @@ This means a list of all exercises will be the main tool available. Towards the 
 ## TODO
 
 ### In Progress
+- [ ] Plan and implement XP, levels, and workout celebrations
+  - See [docs/GAMIFICATION_SPEC.md](docs/GAMIFICATION_SPEC.md)
 - [ ] match splash screen
 - [ ] Animate card movement on first page
   - opencontainer is making it hard to do the animation

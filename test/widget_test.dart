@@ -10,6 +10,7 @@ import 'package:drift/native.dart';
 
 import 'package:gym_app/database/database.dart';
 import 'package:gym_app/main.dart';
+import 'package:gym_app/services/gamification_service.dart';
 
 void main() {
   late AppDatabase testDatabase;
@@ -17,6 +18,7 @@ void main() {
   setUp(() {
     testDatabase = AppDatabase.forTesting(NativeDatabase.memory());
     db = testDatabase;
+    gamificationService = GamificationService(testDatabase);
   });
 
   tearDown(() async {

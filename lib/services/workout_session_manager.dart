@@ -4,6 +4,8 @@ import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:gym_app/services/rest_timer_manager.dart';
+import 'package:gym_app/domain/gamification.dart';
+import 'package:gym_app/services/gamification_service.dart';
 
 class WorkoutSessionManager extends ChangeNotifier {
   static final WorkoutSessionManager _instance =
@@ -14,6 +16,8 @@ class WorkoutSessionManager extends ChangeNotifier {
 
   String? _currentSessionId;
   DateTime? _sessionStartTime;
+  GamificationService? _gamification;
+  bool _didRecoverAttempts = false;
 
   Timer? _autoEndTimer;
 
@@ -21,7 +25,12 @@ class WorkoutSessionManager extends ChangeNotifier {
   static const String _prefStartTimeKey = 'current_session_start_time';
 
   String? get currentSessionId => _currentSessionId;
+  DateTime? get sessionStartTime => _sessionStartTime;
   bool get isWorkoutActive => _currentSessionId != null;
+
+  void configureGamification(GamificationService service) {
+    _gamification = service;
+  }
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
@@ -29,6 +38,16 @@ class WorkoutSessionManager extends ChangeNotifier {
     final startTimeIso = prefs.getString(_prefStartTimeKey);
     if (startTimeIso != null) {
       _sessionStartTime = DateTime.tryParse(startTimeIso);
+    }
+    if (!_didRecoverAttempts && _gamification != null) {
+      await _gamification!.recoverUnfinishedAttempts();
+      _didRecoverAttempts = true;
+    }
+    if (_currentSessionId != null && _sessionStartTime != null) {
+      await _gamification?.startSession(
+        sessionId: _currentSessionId,
+        startedAt: _sessionStartTime,
+      );
     }
     await _checkAutoEnd();
     if (isWorkoutActive) {
@@ -40,7 +59,7 @@ class WorkoutSessionManager extends ChangeNotifier {
     if (_sessionStartTime != null) {
       final difference = DateTime.now().difference(_sessionStartTime!);
       if (difference.inHours >= 4) {
-        await endWorkout();
+        await endWorkout(reason: WorkoutEndReason.automatic);
       }
     }
   }
@@ -53,10 +72,10 @@ class WorkoutSessionManager extends ChangeNotifier {
       final remaining = const Duration(hours: 4) - difference;
 
       if (remaining.isNegative) {
-        endWorkout();
+        endWorkout(reason: WorkoutEndReason.automatic);
       } else {
         _autoEndTimer = Timer(remaining, () {
-          endWorkout();
+          endWorkout(reason: WorkoutEndReason.automatic);
         });
       }
     }
@@ -65,8 +84,16 @@ class WorkoutSessionManager extends ChangeNotifier {
   Future<void> startWorkout() async {
     if (isWorkoutActive) return;
 
-    _currentSessionId = const Uuid().v4();
-    _sessionStartTime = DateTime.now();
+    final sessionId = const Uuid().v4();
+    final startedAt = DateTime.now();
+
+    await _gamification?.startSession(
+      sessionId: sessionId,
+      startedAt: startedAt,
+    );
+
+    _currentSessionId = sessionId;
+    _sessionStartTime = startedAt;
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefSessionIdKey, _currentSessionId!);
@@ -78,7 +105,14 @@ class WorkoutSessionManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> endWorkout() async {
+  Future<String?> endWorkout({
+    WorkoutEndReason reason = WorkoutEndReason.explicit,
+  }) async {
+    final endedSessionId = _currentSessionId;
+    if (endedSessionId == null) return null;
+
+    await _gamification?.completeWorkout(endedSessionId, reason: reason);
+
     _autoEndTimer?.cancel();
     _autoEndTimer = null;
 
@@ -92,5 +126,6 @@ class WorkoutSessionManager extends ChangeNotifier {
     await prefs.remove(_prefSessionIdKey);
     await prefs.remove(_prefStartTimeKey);
     notifyListeners();
+    return endedSessionId;
   }
 }

@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:gym_app/models/models.dart';
+import 'package:gym_app/domain/gamification.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gym_app/views/settings_page.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
@@ -19,8 +20,15 @@ import 'package:gym_app/services/rest_timer_manager.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:gym_app/widgets/rest_timer_overlay.dart';
 import 'package:gym_app/services/theme_manager.dart';
+import 'package:gym_app/widgets/exercise_xp_tier_selector.dart';
+import 'package:gym_app/services/gamification_service.dart';
+import 'package:gym_app/services/workout_feedback_settings.dart';
+import 'package:gym_app/views/workout_completion_page.dart';
+import 'package:gym_app/widgets/session_progress_strip.dart';
+import 'package:gym_app/widgets/workout_feedback_overlay.dart';
 
 late AppDatabase db;
+late GamificationService gamificationService;
 
 @pragma('vm:entry-point')
 void startStopwatchCallback() {
@@ -30,7 +38,10 @@ void startStopwatchCallback() {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   db = AppDatabase();
+  gamificationService = GamificationService(db);
+  WorkoutSessionManager.instance.configureGamification(gamificationService);
   await ThemeManager.instance.init();
+  await WorkoutFeedbackSettings.instance.init();
   await WorkoutSessionManager.instance.init();
   await RestTimerManager.instance.init();
   await FlutterDisplayMode.setHighRefreshRate();
@@ -208,10 +219,47 @@ class _MyHomePageState extends State<MyHomePage> {
     WorkoutSessionManager.instance.addListener(_handleWorkoutSessionChanged);
     _loadExercises();
     _loadSupersetProgress();
-    _refreshPriorities(); // Initial priority fetch
     _searchController.addListener(() {
       filterExercises();
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showPendingAutomaticSummary();
+    });
+  }
+
+  Future<void> _showPendingAutomaticSummary() async {
+    final session = await gamificationService.pendingAutomaticSession;
+    if (session == null) return;
+    final breakdown = await gamificationService.breakdownForSession(
+      session.sessionId,
+    );
+    await gamificationService.markCompletionSummarySeen(session.sessionId);
+    if (!mounted || breakdown.total == 0) return;
+    final progress = await gamificationService.levelProgress;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Previous workout closed automatically · ${breakdown.total} XP preserved',
+        ),
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'VIEW',
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => WorkoutCompletionPage(
+                  breakdown: breakdown,
+                  levelProgress: progress,
+                  completedWorkout: false,
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   void _handleWorkoutSessionChanged() {
@@ -259,9 +307,19 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     } else {
       final exercisesList = jsonDecode(exercisesJson) as List;
+      final needsExerciseMetadataMigration = exercisesList.any(
+        (json) =>
+            json is Map<String, dynamic> &&
+            Exercise.metadataNeedsMigration(json),
+      );
       _allExercises = exercisesList
           .map((json) => Exercise.fromJson(json))
           .toList();
+      if (needsExerciseMetadataMigration) {
+        // Persist generated IDs and defaulted tiers so they remain stable on
+        // the next launch.
+        await _saveExercises();
+      }
       // Re-check asset existence for loaded exercises in case assets changed
       for (var exercise in _allExercises) {
         final assetPath = _exerciseImageMap[exercise.name];
@@ -274,6 +332,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     }
     await _migrateLegacyHistory();
+    await _refreshPriorities();
     filterExercises();
   }
 
@@ -358,12 +417,22 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _refreshPriorities() async {
-    final freshDates = await db.getLastFreshDates();
+    final freshDates = Map.fromEntries(
+      await Future.wait(
+        _allExercises.map((exercise) async {
+          final date = await db.getLastFreshDateForExercise(
+            exercise.id,
+            exercise.name,
+          );
+          return MapEntry(exercise.id, date);
+        }),
+      ),
+    );
     if (mounted) {
       setState(() {
         for (var exercise in _allExercises) {
           exercise.isHighPriority = PriorityManager.isHighPriority(
-            freshDates[exercise.name],
+            freshDates[exercise.id],
           );
         }
       });
@@ -489,14 +558,29 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _showAddExerciseDialog() async {
     final TextEditingController newExerciseController = TextEditingController();
+    var selectedTier = ExerciseXpTier.standard;
     return showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Add New Exercise'),
-          content: TextField(
-            controller: newExerciseController,
-            decoration: const InputDecoration(hintText: "Exercise Name"),
+          content: StatefulBuilder(
+            builder: (context, setDialogState) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: newExerciseController,
+                  decoration: const InputDecoration(hintText: 'Exercise Name'),
+                  autofocus: true,
+                ),
+                const SizedBox(height: 20),
+                ExerciseXpTierSelector(
+                  value: selectedTier,
+                  onChanged: (tier) =>
+                      setDialogState(() => selectedTier = tier),
+                ),
+              ],
+            ),
           ),
           actions: <Widget>[
             TextButton(
@@ -509,9 +593,12 @@ class _MyHomePageState extends State<MyHomePage> {
               child: const Text('Add'),
               onPressed: () async {
                 HapticFeedback.lightImpact();
-                final newExerciseName = newExerciseController.text;
+                final newExerciseName = newExerciseController.text.trim();
                 if (newExerciseName.isNotEmpty) {
-                  final newExercise = Exercise(name: newExerciseName);
+                  final newExercise = Exercise(
+                    name: newExerciseName,
+                    xpTier: selectedTier,
+                  );
                   final assetPath = _exerciseImageMap[newExercise.name];
                   if (assetPath != null) {
                     newExercise.hasLocalImage = await _checkAssetExists(
@@ -537,6 +624,119 @@ class _MyHomePageState extends State<MyHomePage> {
         );
       },
     );
+  }
+
+  Future<void> _startWorkout() async {
+    await WorkoutSessionManager.instance.startWorkout();
+    if (!mounted) return;
+    await showWorkoutStartCelebration(context);
+  }
+
+  Future<void> _endWorkout() async {
+    final sessionId = WorkoutSessionManager.instance.currentSessionId;
+    if (sessionId == null) return;
+    final currentBreakdown = await gamificationService.breakdownForSession(
+      sessionId,
+    );
+    if (!mounted) return;
+
+    if (currentBreakdown.total == 0) {
+      final discard = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Discard empty workout?'),
+          content: const Text('No sets were recorded in this session.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('KEEP WORKOUT'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('DISCARD'),
+            ),
+          ],
+        ),
+      );
+      if (discard != true) return;
+      await WorkoutSessionManager.instance.endWorkout(
+        reason: WorkoutEndReason.discarded,
+      );
+      return;
+    }
+
+    final shouldEnd = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Finish this workout?'),
+        content: Text('${currentBreakdown.total} XP is already banked.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('KEEP GOING'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('FINISH WORKOUT'),
+          ),
+        ],
+      ),
+    );
+    if (shouldEnd != true) return;
+
+    final endedSessionId = await WorkoutSessionManager.instance.endWorkout();
+    if (endedSessionId == null) return;
+    final breakdown = await gamificationService.breakdownForSession(
+      endedSessionId,
+    );
+    final progress = await gamificationService.levelProgress;
+    final crossedLevels = GamificationService.crossedLevels(
+      progress.lifetimeXp - breakdown.total,
+      progress.lifetimeXp,
+    );
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WorkoutCompletionPage(
+          breakdown: breakdown,
+          levelProgress: progress,
+          completedWorkout: breakdown.workoutCompletedXp > 0,
+          levelsCrossed: crossedLevels,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showEditExerciseDialog(Exercise exercise) async {
+    var selectedTier = exercise.xpTier;
+    final changed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Edit ${exercise.name}'),
+          content: ExerciseXpTierSelector(
+            value: selectedTier,
+            onChanged: (tier) => setDialogState(() => selectedTier = tier),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (changed == true && mounted) {
+      setState(() => exercise.xpTier = selectedTier);
+      await _saveExercises();
+    }
   }
 
   @override
@@ -579,14 +779,7 @@ class _MyHomePageState extends State<MyHomePage> {
           builder: (context, _) {
             final isRunning = WorkoutSessionManager.instance.isWorkoutActive;
             return FloatingActionButton.extended(
-              onPressed: () {
-                HapticFeedback.mediumImpact();
-                if (isRunning) {
-                  WorkoutSessionManager.instance.endWorkout();
-                } else {
-                  WorkoutSessionManager.instance.startWorkout();
-                }
-              },
+              onPressed: isRunning ? _endWorkout : _startWorkout,
               label: Text(isRunning ? 'End Workout' : 'Start Workout'),
               icon: Icon(isRunning ? Icons.stop : Icons.play_arrow),
               backgroundColor: isRunning
@@ -598,6 +791,41 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         body: Column(
           children: [
+            ListenableBuilder(
+              listenable: WorkoutSessionManager.instance,
+              builder: (context, _) {
+                final manager = WorkoutSessionManager.instance;
+                final sessionId = manager.currentSessionId;
+                final startedAt = manager.sessionStartTime;
+                if (sessionId == null || startedAt == null) {
+                  return const SizedBox.shrink();
+                }
+                return ListenableBuilder(
+                  listenable: gamificationService,
+                  builder: (context, _) =>
+                      FutureBuilder<(int, XpLevelProgress)>(
+                        future:
+                            Future.wait<Object>([
+                              gamificationService.sessionXp(sessionId),
+                              gamificationService.levelProgress,
+                            ]).then(
+                              (values) => (
+                                values[0] as int,
+                                values[1] as XpLevelProgress,
+                              ),
+                            ),
+                        builder: (context, snapshot) {
+                          final data = snapshot.data;
+                          return SessionProgressStrip(
+                            startedAt: startedAt,
+                            sessionXp: data?.$1 ?? 0,
+                            level: data?.$2.level ?? 1,
+                          );
+                        },
+                      ),
+                );
+              },
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: Container(
@@ -1084,6 +1312,15 @@ class _MyHomePageState extends State<MyHomePage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Edit XP effort tier'),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.of(context).pop();
+                  _showEditExerciseDialog(exercise);
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.link),
                 title: const Text('Link as Alternative'),

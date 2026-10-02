@@ -9,6 +9,7 @@ import 'package:open_file/open_file.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gym_app/main.dart'; // for db access
 import 'package:gym_app/services/theme_manager.dart';
+import 'package:gym_app/services/workout_feedback_settings.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -21,6 +22,8 @@ class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _timerController = TextEditingController();
   bool _notificationsEnabled = true;
   bool _warmupSetEnabled = false;
+  bool _workoutHapticsEnabled = true;
+  bool _workoutSoundEnabled = false;
 
   @override
   void initState() {
@@ -35,6 +38,8 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
       _warmupSetEnabled = prefs.getBool('warmup_set_enabled') ?? false;
+      _workoutHapticsEnabled = WorkoutFeedbackSettings.instance.hapticsEnabled;
+      _workoutSoundEnabled = WorkoutFeedbackSettings.instance.soundEnabled;
     });
   }
 
@@ -58,6 +63,16 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _warmupSetEnabled = value;
     });
+  }
+
+  Future<void> _saveWorkoutHapticsSetting(bool value) async {
+    await WorkoutFeedbackSettings.instance.setHapticsEnabled(value);
+    if (mounted) setState(() => _workoutHapticsEnabled = value);
+  }
+
+  Future<void> _saveWorkoutSoundSetting(bool value) async {
+    await WorkoutFeedbackSettings.instance.setSoundEnabled(value);
+    if (mounted) setState(() => _workoutSoundEnabled = value);
   }
 
   @override
@@ -300,6 +315,34 @@ class _SettingsPageState extends State<SettingsPage> {
                   onSelectionChanged: (Set<ThemeMode> newSelection) {
                     ThemeManager.instance.setThemeMode(newSelection.first);
                   },
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildSectionHeader('Workout Feedback'),
+              SwitchListTile(
+                title: const Text(
+                  'Haptics',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('Tactile feedback for workout rewards'),
+                value: _workoutHapticsEnabled,
+                onChanged: _saveWorkoutHapticsSetting,
+                secondary: Icon(
+                  Icons.vibration,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              SwitchListTile(
+                title: const Text(
+                  'Celebration Sounds',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('Optional sounds for workout milestones'),
+                value: _workoutSoundEnabled,
+                onChanged: _saveWorkoutSoundSetting,
+                secondary: Icon(
+                  Icons.volume_up_outlined,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(height: 16),

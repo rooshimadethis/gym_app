@@ -43,4 +43,37 @@ void main() {
       expect(exercise.sessionCompletedSetIndices, isEmpty);
     });
   });
+
+  group('Exercise metadata', () {
+    test('creates and round-trips a stable UUID and XP tier', () {
+      final exercise = Exercise.fromJson({
+        'id': 'exercise-123',
+        'name': 'Deadlift',
+        'xpTier': 'demanding',
+      });
+
+      expect(exercise.id, 'exercise-123');
+      expect(exercise.xpTier.name, 'demanding');
+      expect(Exercise.fromJson(exercise.toJson()).id, exercise.id);
+      expect(Exercise.fromJson(exercise.toJson()).xpTier, exercise.xpTier);
+    });
+
+    test('migrates missing IDs and unknown tiers safely', () {
+      final exercise = Exercise.fromJson({
+        'name': 'Old exercise',
+        'xpTier': 'not-a-tier',
+      });
+
+      expect(exercise.id, isNotEmpty);
+      expect(exercise.xpTier.name, 'standard');
+      expect(Exercise.metadataNeedsMigration({'name': 'Old exercise'}), isTrue);
+      expect(
+        Exercise.metadataNeedsMigration({
+          'id': exercise.id,
+          'xpTier': 'standard',
+        }),
+        isFalse,
+      );
+    });
+  });
 }

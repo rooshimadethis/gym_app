@@ -1,3 +1,11 @@
+import 'package:gym_app/domain/gamification.dart';
+import 'package:uuid/uuid.dart';
+
+String _stableExerciseId(String? value) {
+  if (value != null && value.trim().isNotEmpty) return value;
+  return const Uuid().v4();
+}
+
 class SetData {
   String weight;
   String reps;
@@ -11,6 +19,7 @@ class SetData {
 }
 
 class Exercise {
+  final String id;
   String name;
   List<SetData> sets;
   String? imageUrl;
@@ -22,8 +31,11 @@ class Exercise {
   int? sessionFatigueScore;
   int currentSetIndex;
   Set<int> sessionCompletedSetIndices;
+  String? sessionAttemptId;
+  ExerciseXpTier xpTier;
 
   Exercise({
+    String? id,
     required this.name,
     this.imageUrl,
     List<SetData>? sets,
@@ -35,10 +47,14 @@ class Exercise {
     this.sessionFatigueScore,
     this.currentSetIndex = 0,
     Set<int>? sessionCompletedSetIndices,
-  }) : sets = sets ?? [SetData(), SetData(), SetData()],
+    this.sessionAttemptId,
+    this.xpTier = ExerciseXpTier.standard,
+  }) : id = _stableExerciseId(id),
+       sets = sets ?? [SetData(), SetData(), SetData()],
        sessionCompletedSetIndices = sessionCompletedSetIndices ?? <int>{};
 
   Map<String, dynamic> toJson() => {
+    'id': id,
     'name': name,
     'sets': sets.map((set) => set.toJson()).toList(),
     'imageUrl': imageUrl,
@@ -46,21 +62,43 @@ class Exercise {
     'groupId': groupId,
     'supersetId': supersetId,
     'supersetOrder': supersetOrder,
+    'xpTier': xpTier.name,
   };
 
   factory Exercise.fromJson(Map<String, dynamic> json) => Exercise(
-    name: json['name'],
-    imageUrl: json['imageUrl'],
-    hasLocalImage: json['hasLocalImage'] ?? false,
-    groupId: json['groupId'],
-    supersetId: json['supersetId'],
-    supersetOrder: json['supersetOrder'],
+    id: _nonEmptyString(json['id']),
+    name: json['name'] as String? ?? 'Unnamed Exercise',
+    imageUrl: json['imageUrl'] as String?,
+    hasLocalImage: json['hasLocalImage'] as bool? ?? false,
+    groupId: json['groupId'] as String?,
+    supersetId: json['supersetId'] as String?,
+    supersetOrder: json['supersetOrder'] as int?,
+    xpTier: _xpTierFromJson(json['xpTier']),
     sets:
         (json['sets'] as List?)
             ?.map((setJson) => SetData.fromJson(setJson))
             .toList() ??
         [],
   );
+
+  static ExerciseXpTier _xpTierFromJson(Object? value) {
+    return ExerciseXpTierSerialization.parse(value);
+  }
+
+  /// Returns true when loading this record should be followed by a save.
+  /// This lets old JSON acquire a stable ID and an explicit tier once, rather
+  /// than generating a new ID every time it is decoded.
+  static bool metadataNeedsMigration(Map<String, dynamic> json) {
+    final id = _nonEmptyString(json['id']);
+    final tier = json['xpTier'];
+    final hasKnownTier = ExerciseXpTier.values.any((item) => item.name == tier);
+    return id == null || !hasKnownTier;
+  }
+
+  static String? _nonEmptyString(Object? value) {
+    if (value is! String || value.trim().isEmpty) return null;
+    return value;
+  }
 
   bool get isPartOfGroup => groupId != null && groupId!.isNotEmpty;
   bool get isPartOfSuperset => supersetId != null && supersetId!.isNotEmpty;
@@ -78,5 +116,6 @@ class Exercise {
     currentSetIndex = 0;
     sessionFatigueScore = null;
     sessionCompletedSetIndices.clear();
+    sessionAttemptId = null;
   }
 }
