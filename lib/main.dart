@@ -26,6 +26,7 @@ import 'package:gym_app/services/workout_feedback_settings.dart';
 import 'package:gym_app/views/workout_completion_page.dart';
 import 'package:gym_app/widgets/session_progress_strip.dart';
 import 'package:gym_app/widgets/workout_feedback_overlay.dart';
+import 'package:gym_app/widgets/workout_finish_dialog.dart';
 
 late AppDatabase db;
 late GamificationService gamificationService;
@@ -564,6 +565,7 @@ class _MyHomePageState extends State<MyHomePage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Add New Exercise'),
+          scrollable: true,
           content: StatefulBuilder(
             builder: (context, setDialogState) => Column(
               mainAxisSize: MainAxisSize.min,
@@ -665,24 +667,11 @@ class _MyHomePageState extends State<MyHomePage> {
       return;
     }
 
-    final shouldEnd = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Finish this workout?'),
-        content: Text('${currentBreakdown.total} XP is already banked.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('KEEP GOING'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('FINISH WORKOUT'),
-          ),
-        ],
-      ),
+    final shouldEnd = await showFinishWorkoutDialog(
+      context,
+      bankedXp: currentBreakdown.total,
     );
-    if (shouldEnd != true) return;
+    if (!shouldEnd) return;
 
     final endedSessionId = await WorkoutSessionManager.instance.endWorkout();
     if (endedSessionId == null) return;
@@ -709,31 +698,13 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _showEditExerciseDialog(Exercise exercise) async {
-    var selectedTier = exercise.xpTier;
-    final changed = await showDialog<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text('Edit ${exercise.name}'),
-          content: ExerciseXpTierSelector(
-            value: selectedTier,
-            onChanged: (tier) => setDialogState(() => selectedTier = tier),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
+    final selectedTier = await showExerciseXpTierDialog(
+      context,
+      exerciseName: exercise.name,
+      initialTier: exercise.xpTier,
     );
 
-    if (changed == true && mounted) {
+    if (selectedTier != null && mounted) {
       setState(() => exercise.xpTier = selectedTier);
       await _saveExercises();
     }

@@ -473,34 +473,86 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
   Future<void> _showFailedSetFlow() async {
     final action = await showModalBottomSheet<String>(
       context: context,
-      showDragHandle: true,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border(
+              top: BorderSide(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: .28),
+              ),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Couldn\'t finish this set?',
-                style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'The effort still earns set XP. This attempt won\'t replace your previous performance.',
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: .24),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
               ),
               const SizedBox(height: 18),
-              FilledButton(
+              const Text(
+                'Set didn\'t go as planned?',
+                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Your effort still earns XP. Ending here won\'t change your previous best.',
+                style: TextStyle(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: .7),
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('TRY AGAIN OR ADJUST WEIGHT'),
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Text('Try again'),
+                ),
               ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, 'exercise'),
-                child: const Text('END EXERCISE FOR TODAY'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, 'workout'),
-                child: const Text('END WORKOUT FOR TODAY'),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context, 'exercise'),
+                      child: const Text('End exercise'),
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 20,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: .12),
+                  ),
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context, 'workout'),
+                      child: const Text('End workout'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

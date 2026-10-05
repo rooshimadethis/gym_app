@@ -59,11 +59,15 @@ class _WorkoutCompletionPageState extends State<WorkoutCompletionPage>
   @override
   Widget build(BuildContext context) {
     final progress = widget.levelProgress;
+    final scheme = Theme.of(context).colorScheme;
     final title = widget.levelsCrossed.isNotEmpty
         ? 'LEVEL UP'
         : widget.completedWorkout
         ? 'WORKOUT COMPLETE'
-        : 'EFFORT COUNTED';
+        : 'EFFORT BANKED';
+    final subtitle = widget.completedWorkout
+        ? 'You showed up. That\'s the win.'
+        : 'Not every session needs a finish.';
 
     return Scaffold(
       body: Stack(
@@ -85,85 +89,153 @@ class _WorkoutCompletionPageState extends State<WorkoutCompletionPage>
             ),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Spacer(),
-                  Icon(
-                    widget.completedWorkout
-                        ? Icons.celebration_rounded
-                        : Icons.favorite_rounded,
-                    size: 58,
-                    color: Theme.of(context).colorScheme.primary,
+                  Text(
+                    'SESSION RECEIPT',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: scheme.onSurface.withValues(alpha: .5),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.2,
+                    ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 28),
+                  Center(
+                    child: Container(
+                      width: 62,
+                      height: 62,
+                      decoration: BoxDecoration(
+                        color: scheme.primary.withValues(alpha: .14),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: scheme.primary.withValues(alpha: .38),
+                        ),
+                      ),
+                      child: Icon(
+                        widget.completedWorkout
+                            ? Icons.check_rounded
+                            : Icons.bolt_rounded,
+                        size: 34,
+                        color: scheme.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Text(
                     title,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 28,
+                      fontSize: 30,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 1.1,
+                      letterSpacing: .4,
                     ),
                   ),
-                  if (!widget.completedWorkout) ...[
-                    const SizedBox(height: 8),
-                    const Text('The effort still counts.'),
-                  ],
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 5),
                   Text(
-                    '+${widget.breakdown.total} XP',
+                    subtitle,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 42,
-                      fontWeight: FontWeight.w900,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: scheme.onSurface.withValues(alpha: .68),
                     ),
                   ),
-                  const SizedBox(height: 28),
-                  _BreakdownRow(
-                    label: 'Completed sets',
-                    xp: widget.breakdown.setCompletedXp,
+                  const SizedBox(height: 18),
+                  Text(
+                    '+${widget.breakdown.total}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 54,
+                      fontWeight: FontWeight.w900,
+                      height: 1,
+                      color: scheme.primary,
+                    ),
                   ),
-                  _BreakdownRow(
-                    label: 'Failed-set effort',
-                    xp: widget.breakdown.setFailedXp,
+                  Text(
+                    'XP EARNED',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: scheme.primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.8,
+                    ),
                   ),
-                  _BreakdownRow(
-                    label: 'Exercises completed',
-                    xp: widget.breakdown.exerciseCompletedXp,
-                  ),
-                  _BreakdownRow(
-                    label: 'Workout completed',
-                    xp: widget.breakdown.workoutCompletedXp,
-                  ),
-                  const SizedBox(height: 30),
-                  Row(
-                    children: [
-                      Text(
-                        'LEVEL ${progress.level}',
-                        style: const TextStyle(fontWeight: FontWeight.w900),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHighest.withValues(
+                        alpha: .42,
                       ),
-                      const Spacer(),
-                      Text(
-                        '${progress.xpIntoLevel} / ${progress.xpForNextLevel}',
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: scheme.onSurface.withValues(alpha: .09),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: progress.fraction.clamp(0, 1),
-                    minHeight: 12,
-                    borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Column(
+                      children: [
+                        _BreakdownRow(
+                          label: 'Completed sets',
+                          xp: widget.breakdown.setCompletedXp,
+                        ),
+                        _BreakdownRow(
+                          label: 'Failed-set effort',
+                          xp: widget.breakdown.setFailedXp,
+                        ),
+                        _BreakdownRow(
+                          label: 'Exercises completed',
+                          xp: widget.breakdown.exerciseCompletedXp,
+                        ),
+                        _BreakdownRow(
+                          label: 'Workout completed',
+                          xp: widget.breakdown.workoutCompletedXp,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Divider(
+                            height: 1,
+                            color: scheme.onSurface.withValues(alpha: .12),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              'Level ${progress.level}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              '${progress.xpIntoLevel} / ${progress.xpForNextLevel} XP',
+                              style: TextStyle(
+                                color: scheme.onSurface.withValues(alpha: .62),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        LinearProgressIndicator(
+                          value: progress.fraction.clamp(0, 1),
+                          minHeight: 8,
+                          borderRadius: BorderRadius.circular(999),
+                          backgroundColor: scheme.onSurface.withValues(
+                            alpha: .1,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const Spacer(),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 15),
-                        child: Text('DONE'),
-                      ),
+                  FilledButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      child: Text('Done'),
                     ),
                   ),
                 ],
@@ -232,11 +304,20 @@ class _BreakdownRow extends StatelessWidget {
   Widget build(BuildContext context) {
     if (xp == 0) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Expanded(child: Text(label)),
-          Text('+$xp', style: const TextStyle(fontWeight: FontWeight.w800)),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: .72),
+              ),
+            ),
+          ),
+          Text('+$xp XP', style: const TextStyle(fontWeight: FontWeight.w900)),
         ],
       ),
     );

@@ -50,18 +50,15 @@ class _SessionProgressStripState extends State<SessionProgressStrip> {
           'Workout active for $elapsedLabel, ${widget.sessionXp} session XP, level ${widget.level}',
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: scheme.primaryContainer,
-          borderRadius: BorderRadius.circular(18),
+          color: scheme.surface.withValues(alpha: .72),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: scheme.primary.withValues(alpha: .28)),
         ),
         child: Row(
           children: [
-            Icon(
-              Icons.timer_outlined,
-              size: 18,
-              color: scheme.onPrimaryContainer,
-            ),
+            Icon(Icons.timer_outlined, size: 18, color: scheme.primary),
             const SizedBox(width: 6),
             Text(elapsedLabel),
             const Spacer(),
@@ -76,7 +73,10 @@ class _SessionProgressStripState extends State<SessionProgressStrip> {
             const SizedBox(width: 16),
             Text(
               'LV ${widget.level}',
-              style: const TextStyle(fontWeight: FontWeight.w800),
+              style: TextStyle(
+                color: scheme.onSurface.withValues(alpha: .64),
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ],
         ),

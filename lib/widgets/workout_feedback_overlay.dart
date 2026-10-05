@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gym_app/services/workout_feedback_settings.dart';
@@ -9,9 +7,14 @@ Future<void> showWorkoutStartCelebration(BuildContext context) async {
   final reduceMotion = MediaQuery.disableAnimationsOf(context);
   late final OverlayEntry entry;
   entry = OverlayEntry(
-    builder: (_) => _WorkoutStartOverlay(
-      reduceMotion: reduceMotion,
-      onComplete: () => entry.remove(),
+    builder: (_) => IgnorePointer(
+      child: Material(
+        type: MaterialType.transparency,
+        child: _WorkoutStartOverlay(
+          reduceMotion: reduceMotion,
+          onComplete: () => entry.remove(),
+        ),
+      ),
     ),
   );
   overlay.insert(entry);
@@ -32,11 +35,16 @@ void showXpGainFeedback(
   final reduceMotion = MediaQuery.disableAnimationsOf(context);
   late final OverlayEntry entry;
   entry = OverlayEntry(
-    builder: (_) => _XpGainOverlay(
-      xp: xp,
-      effort: effort,
-      reduceMotion: reduceMotion,
-      onComplete: () => entry.remove(),
+    builder: (_) => IgnorePointer(
+      child: Material(
+        type: MaterialType.transparency,
+        child: _XpGainOverlay(
+          xp: xp,
+          effort: effort,
+          reduceMotion: reduceMotion,
+          onComplete: () => entry.remove(),
+        ),
+      ),
     ),
   );
   overlay.insert(entry);
@@ -63,12 +71,10 @@ class _WorkoutStartOverlayState extends State<_WorkoutStartOverlay>
   void initState() {
     super.initState();
     _controller =
-        AnimationController(
-          vsync: this,
-          duration: Duration(milliseconds: widget.reduceMotion ? 650 : 900),
-        )..addStatusListener((status) {
-          if (status == AnimationStatus.completed) widget.onComplete();
-        });
+        AnimationController(vsync: this, duration: const Duration(seconds: 3))
+          ..addStatusListener((status) {
+            if (status == AnimationStatus.completed) widget.onComplete();
+          });
     _controller.forward();
   }
 
@@ -81,77 +87,103 @@ class _WorkoutStartOverlayState extends State<_WorkoutStartOverlay>
   @override
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.primary;
+    final scheme = Theme.of(context).colorScheme;
     return IgnorePointer(
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
           final t = _controller.value;
-          final fade = t < .18 ? t / .18 : (1 - t).clamp(0.0, 1.0) / .3;
-          final opacity = t < .7 ? 1.0 : fade;
+          // Enter quickly, hold long enough to read, then fade over 300ms.
+          final entrance = (t / .08).clamp(0.0, 1.0);
+          final opacity = t < .9 ? entrance : ((1 - t) / .1).clamp(0.0, 1.0);
           return Stack(
             children: [
               Positioned.fill(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: RadialGradient(
-                      radius: 1.1 + t * .35,
+                      center: const Alignment(0, -1),
+                      radius: .8 + t * .45,
                       colors: [
-                        color.withValues(alpha: .22 * opacity),
+                        color.withValues(alpha: .16 * opacity),
                         color.withValues(alpha: 0),
                       ],
                     ),
                   ),
                 ),
               ),
-              if (!widget.reduceMotion)
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _BurstPainter(
-                      progress: Curves.easeOutCubic.transform(t),
-                      color: color,
-                    ),
-                  ),
-                ),
-              Center(
-                child: Opacity(
-                  opacity: opacity,
-                  child: Transform.scale(
-                    scale: widget.reduceMotion
-                        ? 1
-                        : .88 + Curves.elasticOut.transform(t) * .12,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: color.withValues(alpha: .25),
-                            blurRadius: 32,
-                            spreadRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 28,
-                          vertical: 20,
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+                    child: Opacity(
+                      opacity: opacity,
+                      child: Transform.translate(
+                        offset: Offset(
+                          0,
+                          widget.reduceMotion
+                              ? 0
+                              : -16 *
+                                    (1 -
+                                        Curves.easeOutCubic.transform(
+                                          entrance,
+                                        )),
                         ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.play_arrow_rounded, size: 34),
-                            SizedBox(height: 6),
-                            Text(
-                              'WORKOUT STARTED',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.1,
-                              ),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: scheme.surface.withValues(alpha: .96),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: color.withValues(alpha: .36),
                             ),
-                            SizedBox(height: 4),
-                            Text('First set is all that matters'),
-                          ],
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: .28),
+                                blurRadius: 24,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 12, 18, 12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: color.withValues(alpha: .16),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.play_arrow_rounded,
+                                    color: color,
+                                    size: 26,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Workout started',
+                                        style: TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      SizedBox(height: 2),
+                                      Text('First set. That\'s the whole job.'),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -193,7 +225,7 @@ class _XpGainOverlayState extends State<_XpGainOverlay>
     _controller =
         AnimationController(
           vsync: this,
-          duration: Duration(milliseconds: widget.reduceMotion ? 700 : 500),
+          duration: const Duration(milliseconds: 1800),
         )..addStatusListener((status) {
           if (status == AnimationStatus.completed) widget.onComplete();
         });
@@ -208,39 +240,70 @@ class _XpGainOverlayState extends State<_XpGainOverlay>
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return IgnorePointer(
-      child: SafeArea(
-        child: Align(
-          alignment: const Alignment(0, .58),
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              final t = _controller.value;
-              return Opacity(
-                opacity: (1 - t).clamp(0.0, 1.0),
-                child: Transform.translate(
-                  offset: Offset(0, widget.reduceMotion ? 0 : -28 * t),
-                  child: child,
-                ),
-              );
-            },
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.inverseSurface,
-                borderRadius: BorderRadius.circular(999),
-              ),
+      child: Padding(
+        // Overlay entries span the screen even when Scaffold resizes for IME.
+        // Follow the live inset so the award stays above the opening keyboard.
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: SafeArea(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                final t = _controller.value;
+                return Opacity(
+                  opacity: t < .75 ? 1 : ((1 - t) / .25).clamp(0.0, 1.0),
+                  child: Transform.translate(
+                    offset: Offset(0, widget.reduceMotion ? 0 : -28 * t),
+                    child: child,
+                  ),
+                );
+              },
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 9,
-                ),
-                child: Text(
-                  widget.effort
-                      ? 'Effort counted · +${widget.xp} XP'
-                      : '+${widget.xp} XP',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onInverseSurface,
-                    fontWeight: FontWeight.w900,
+                padding: const EdgeInsets.only(bottom: 24),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: scheme.surface.withValues(alpha: .96),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: scheme.primary.withValues(alpha: .42),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: .24),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          widget.effort
+                              ? Icons.bolt_rounded
+                              : Icons.check_rounded,
+                          size: 18,
+                          color: scheme.primary,
+                        ),
+                        const SizedBox(width: 7),
+                        Text(
+                          widget.effort
+                              ? 'Effort +${widget.xp} XP'
+                              : 'Set +${widget.xp} XP',
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -250,30 +313,4 @@ class _XpGainOverlayState extends State<_XpGainOverlay>
       ),
     );
   }
-}
-
-class _BurstPainter extends CustomPainter {
-  const _BurstPainter({required this.progress, required this.color});
-
-  final double progress;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final paint = Paint()..strokeCap = StrokeCap.round;
-    for (var i = 0; i < 18; i++) {
-      final angle = (math.pi * 2 * i / 18) + .15;
-      final distance = 44 + progress * math.min(size.width, size.height) * .34;
-      final point =
-          center + Offset(math.cos(angle), math.sin(angle)) * distance;
-      paint.color = color.withValues(alpha: (1 - progress) * .75);
-      paint.strokeWidth = i.isEven ? 5 : 3;
-      canvas.drawCircle(point, i.isEven ? 3.5 : 2.5, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _BurstPainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.color != color;
 }
