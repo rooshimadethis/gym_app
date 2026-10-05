@@ -2,6 +2,7 @@
 // Uses production widgets without opening or modifying the workout database.
 import 'package:flutter/material.dart';
 import 'domain/gamification.dart';
+import 'services/gamification_service.dart';
 import 'views/workout_completion_page.dart';
 import 'widgets/workout_feedback_overlay.dart';
 import 'widgets/workout_finish_dialog.dart';
@@ -10,6 +11,21 @@ import 'widgets/exercise_xp_tier_selector.dart';
 
 void main() {
   runApp(const FeedbackPreviewApp());
+}
+
+void _previewXp(
+  BuildContext context, {
+  int xp = 3,
+  bool effort = false,
+  int lifetimeXp = 88,
+}) {
+  showXpGainFeedback(
+    context,
+    xp: xp,
+    effort: effort,
+    before: GamificationService.levelProgressForXp(lifetimeXp),
+    after: GamificationService.levelProgressForXp(lifetimeXp + xp),
+  );
 }
 
 class FeedbackPreviewApp extends StatelessWidget {
@@ -64,12 +80,16 @@ class FeedbackPreviewApp extends StatelessWidget {
               child: const Text('Start celebration'),
             ),
             FilledButton(
-              onPressed: () => showXpGainFeedback(context, xp: 3),
+              onPressed: () => _previewXp(context),
               child: const Text('Set XP'),
             ),
             FilledButton(
-              onPressed: () => showXpGainFeedback(context, xp: 2, effort: true),
+              onPressed: () => _previewXp(context, xp: 2, effort: true),
               child: const Text('Partial XP'),
+            ),
+            FilledButton(
+              onPressed: () => _previewXp(context, lifetimeXp: 98),
+              child: const Text('Level-up XP'),
             ),
             FilledButton(
               onPressed: () => showFinishWorkoutDialog(context, bankedXp: 24),
@@ -123,7 +143,7 @@ class _KeyboardPreview extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           FilledButton(
-            onPressed: () => showXpGainFeedback(context, xp: 3),
+            onPressed: () => _previewXp(context),
             child: const Text('Log set · +3 XP'),
           ),
         ],

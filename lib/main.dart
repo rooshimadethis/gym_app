@@ -791,6 +791,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             startedAt: startedAt,
                             sessionXp: data?.$1 ?? 0,
                             level: data?.$2.level ?? 1,
+                            progress: data?.$2,
                           );
                         },
                       ),

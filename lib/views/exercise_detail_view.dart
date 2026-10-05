@@ -65,6 +65,25 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
   late List<GlobalKey> _setKeys;
   bool _isRecordingSet = false;
 
+  Future<void> _showXpAward(
+    XpAward award, {
+    bool effort = false,
+    String label = 'Set',
+  }) async {
+    final after = await gamificationService.levelProgress;
+    if (!mounted) return;
+    showXpGainFeedback(
+      context,
+      xp: award.amount,
+      effort: effort,
+      label: label,
+      before: GamificationService.levelProgressForXp(
+        after.lifetimeXp - award.amount,
+      ),
+      after: after,
+    );
+  }
+
   Future<String> _ensureExerciseAttempt() async {
     final existing = widget.exercise.sessionAttemptId;
     if (existing != null) return existing;
@@ -92,7 +111,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
       tier: widget.exercise.xpTier,
     );
     if (!award.alreadyAwarded && mounted) {
-      showXpGainFeedback(context, xp: award.amount);
+      await _showXpAward(award, label: 'Exercise');
       if (WorkoutFeedbackSettings.instance.hapticsEnabled) {
         await HapticFeedback.mediumImpact();
       }
@@ -433,7 +452,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
     widget.exercise.markSetCompleted(loggedSetIndex);
 
     if (!award.alreadyAwarded && mounted) {
-      showXpGainFeedback(context, xp: award.amount);
+      await _showXpAward(award);
       if (WorkoutFeedbackSettings.instance.hapticsEnabled) {
         await HapticFeedback.lightImpact();
       }
@@ -590,7 +609,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
 
     if (!mounted) return;
     if (!award.alreadyAwarded) {
-      showXpGainFeedback(context, xp: award.amount, effort: true);
+      await _showXpAward(award, effort: true);
     }
     if (WorkoutFeedbackSettings.instance.hapticsEnabled) {
       await HapticFeedback.lightImpact();

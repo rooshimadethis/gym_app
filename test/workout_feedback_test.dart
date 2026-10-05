@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gym_app/domain/gamification.dart';
+import 'package:gym_app/services/gamification_service.dart';
 import 'package:gym_app/views/workout_completion_page.dart';
 import 'package:gym_app/widgets/workout_feedback_overlay.dart';
 import 'package:gym_app/widgets/workout_finish_dialog.dart';
@@ -22,7 +23,12 @@ void main() {
               children: [
                 TextField(focusNode: focus, autofocus: true),
                 FilledButton(
-                  onPressed: () => showXpGainFeedback(context, xp: 3),
+                  onPressed: () => showXpGainFeedback(
+                    context,
+                    xp: 3,
+                    before: GamificationService.levelProgressForXp(88),
+                    after: GamificationService.levelProgressForXp(91),
+                  ),
                   child: const Text('Log'),
                 ),
               ],
@@ -38,6 +44,13 @@ void main() {
     tester.view.viewInsets = const FakeViewPadding(bottom: 280);
     await tester.pump(const Duration(milliseconds: 450));
     expect(find.text('Set +3 XP'), findsOneWidget);
+    expect(find.text('Level 1'), findsOneWidget);
+    expect(
+      tester
+          .widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator))
+          .value,
+      .88,
+    );
     final keyboardTop =
         (tester.view.physicalSize.height - tester.view.viewInsets.bottom) /
         tester.view.devicePixelRatio;
@@ -50,8 +63,124 @@ void main() {
       tester.element(find.text('Set +3 XP')),
     ).style;
     expect(style.decoration, isNot(TextDecoration.underline));
+    await tester.pump(const Duration(milliseconds: 1300));
+    expect(find.text('9 XP to Level 2'), findsOneWidget);
+    expect(
+      tester
+          .widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator))
+          .value,
+      .91,
+    );
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('Set +3 XP'), findsOneWidget);
     await tester.pump(const Duration(seconds: 2));
     expect(find.text('Set +3 XP'), findsNothing);
+  });
+
+  for (final reducedMotion in [false, true]) {
+    testWidgets(
+      'XP handles a level boundary with reduced motion $reducedMotion',
+      (tester) async {
+        if (reducedMotion) {
+          tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
+              const FakeAccessibilityFeatures(disableAnimations: true);
+          addTearDown(
+            tester
+                .binding
+                .platformDispatcher
+                .clearAccessibilityFeaturesTestValue,
+          );
+        }
+        await tester.pumpWidget(
+          MaterialApp(
+            home: MediaQuery(
+              data: MediaQueryData(disableAnimations: reducedMotion),
+              child: Builder(
+                builder: (context) => Scaffold(
+                  body: TextButton(
+                    onPressed: () => showXpGainFeedback(
+                      context,
+                      xp: 3,
+                      before: GamificationService.levelProgressForXp(98),
+                      after: GamificationService.levelProgressForXp(101),
+                    ),
+                    child: const Text('Award'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Award'));
+        await tester.pump();
+        if (!reducedMotion) {
+          await tester.pump(const Duration(milliseconds: 1200));
+          expect(find.text('100 / 100 XP'), findsOneWidget);
+          expect(
+            tester
+                .widget<LinearProgressIndicator>(
+                  find.byType(LinearProgressIndicator),
+                )
+                .value,
+            1,
+          );
+          await tester.pump(const Duration(milliseconds: 800));
+        } else {
+          await tester.pump(const Duration(seconds: 2));
+        }
+        expect(find.text('LEVEL UP! · 2'), findsOneWidget);
+        expect(find.text('124 XP to Level 3'), findsOneWidget);
+        expect(
+          tester
+              .widget<LinearProgressIndicator>(
+                find.byType(LinearProgressIndicator),
+              )
+              .value,
+          1 / 125,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.pump(const Duration(seconds: 4));
+        expect(find.text('Set +3 XP'), findsNothing);
+      },
+    );
+  }
+
+  testWidgets('consecutive set and exercise awards share one reward card', (
+    tester,
+  ) async {
+    late BuildContext rewardContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            rewardContext = context;
+            return const Scaffold();
+          },
+        ),
+      ),
+    );
+    showXpGainFeedback(
+      rewardContext,
+      xp: 3,
+      before: GamificationService.levelProgressForXp(88),
+      after: GamificationService.levelProgressForXp(91),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    showXpGainFeedback(
+      rewardContext,
+      xp: 15,
+      label: 'Exercise',
+      before: GamificationService.levelProgressForXp(91),
+      after: GamificationService.levelProgressForXp(106),
+    );
+    await tester.pump();
+    expect(find.text('Earned +18 XP'), findsOneWidget);
+    expect(find.text('Set +3 XP'), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('119 XP to Level 3'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
   });
   testWidgets(
     'effort editor fits a narrow screen and saves the selected tier',
