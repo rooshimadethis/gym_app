@@ -27,6 +27,7 @@ import 'package:gym_app/views/workout_completion_page.dart';
 import 'package:gym_app/widgets/session_progress_strip.dart';
 import 'package:gym_app/widgets/workout_feedback_overlay.dart';
 import 'package:gym_app/widgets/workout_finish_dialog.dart';
+import 'package:gym_app/widgets/exercise_completion_undo.dart';
 
 late AppDatabase db;
 late GamificationService gamificationService;
@@ -392,9 +393,11 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _loadSupersetProgress() async {
     final prefs = await SharedPreferences.getInstance();
     final progressJson = prefs.getString('superset_progress');
-    if (progressJson != null) {
+    if (mounted) {
       setState(() {
-        _supersetProgress = Map<String, int>.from(jsonDecode(progressJson));
+        _supersetProgress = progressJson == null
+            ? {}
+            : Map<String, int>.from(jsonDecode(progressJson));
       });
     }
   }
@@ -479,6 +482,21 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _moveExerciseToBottom(Exercise exercise) {
+    final attemptId = exercise.sessionAttemptId;
+    final sessionId = WorkoutSessionManager.instance.currentSessionId;
+    final previousIndex = _allExercises.indexOf(exercise);
+    final moved = _allExercises
+        .where(
+          (e) =>
+              e.id == exercise.id ||
+              (exercise.isPartOfSuperset &&
+                  e.supersetId == exercise.supersetId) ||
+              (exercise.isPartOfGroup && e.groupId == exercise.groupId),
+        )
+        .toList();
+    final restoreIndex = moved
+        .map(_allExercises.indexOf)
+        .fold<int>(previousIndex, (a, b) => a < b ? a : b);
     setState(() {
       if (exercise.isPartOfSuperset) {
         // Move entire superset to bottom
@@ -529,6 +547,83 @@ class _MyHomePageState extends State<MyHomePage> {
       _refreshPriorities(); // Refresh on completion
     });
     _saveExercises();
+    if (attemptId != null && sessionId != null) {
+      _offerCompletionUndo(exercise, attemptId, sessionId, moved, restoreIndex);
+    }
+  }
+
+  Future<void> _offerCompletionUndo(
+    Exercise exercise,
+    String attemptId,
+    String sessionId,
+    List<Exercise> moved,
+    int restoreIndex,
+  ) async {
+    final sets = await (db.select(
+      db.setAttempts,
+    )..where((t) => t.attemptId.equals(attemptId))).get();
+    if (!mounted ||
+        sets.isEmpty ||
+        WorkoutSessionManager.instance.currentSessionId != sessionId) {
+      return;
+    }
+    sets.sort((a, b) {
+      final byTime = b.recordedAt.compareTo(a.recordedAt);
+      return byTime != 0
+          ? byTime
+          : b.plannedSetIndex.compareTo(a.plannedSetIndex);
+    });
+    showExerciseCompletionUndo(
+      context,
+      exerciseName: exercise.name,
+      onUndo: () async {
+        try {
+          await gamificationService.undoSet(
+            sets.first.setAttemptId,
+            currentSessionId:
+                WorkoutSessionManager.instance.currentSessionId ?? '',
+          );
+          dismissXpGainFeedback();
+          if (!mounted) return;
+          final remaining = await (db.select(
+            db.setAttempts,
+          )..where((t) => t.attemptId.equals(attemptId))).get();
+          if (!mounted) return;
+          setState(() {
+            exercise.sessionAttemptId = attemptId;
+            exercise.sessionCompletedSetIndices = remaining
+                .where((s) => s.outcome == 'completed')
+                .map((s) => s.plannedSetIndex)
+                .toSet();
+            exercise.currentSetIndex = sets.first.plannedSetIndex;
+            if (exercise.supersetId != null) {
+              _supersetProgress[exercise.supersetId!] =
+                  exercise.supersetOrder ?? 0;
+            }
+            _allExercises.removeWhere((e) => moved.contains(e));
+            _allExercises.insertAll(
+              restoreIndex.clamp(0, _allExercises.length),
+              moved,
+            );
+            filterExercises();
+          });
+          RestTimerManager.instance.stop();
+          await _saveExercises();
+          await _saveSupersetProgress();
+          await _refreshPriorities();
+        } catch (_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Undo is only available while this workout is still active.',
+                ),
+              ),
+            );
+          }
+        }
+      },
+    );
   }
 
   bool _imagesPrecached = false;
@@ -735,11 +830,14 @@ class _MyHomePageState extends State<MyHomePage> {
             IconButton(
               icon: const Icon(Icons.settings_outlined),
               onPressed: () async {
+                await _saveExercises();
+                if (!context.mounted) return;
                 await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const SettingsPage()),
                 );
-                _loadExercises();
+                await _loadExercises();
+                await _loadSupersetProgress();
               },
             ),
             const SizedBox(width: 8),

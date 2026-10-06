@@ -333,6 +333,86 @@ class GamificationService extends ChangeNotifier {
         );
   }
 
+  /// A correction changes performance only, never the reward ledger.
+  Future<void> editHistorySet(
+    int historyId, {
+    required double weight,
+    required int reps,
+  }) async {
+    if (!weight.isFinite || weight < 0 || reps < 0 || reps > 999) {
+      throw ArgumentError('Enter a valid non-negative weight and rep count.');
+    }
+    await database.transaction(() async {
+      final row = await (database.select(
+        database.historyEntries,
+      )..where((t) => t.id.equals(historyId))).getSingle();
+      await (database.update(
+        database.historyEntries,
+      )..where((t) => t.id.equals(historyId))).write(
+        HistoryEntriesCompanion(weight: Value(weight), reps: Value(reps)),
+      );
+      if (row.attemptId != null) {
+        await (database.update(
+          database.setAttempts,
+        )..where((t) => t.historyEntryId.equals(historyId))).write(
+          SetAttemptsCompanion(weight: Value(weight), reps: Value(reps)),
+        );
+      }
+    });
+    notifyListeners();
+  }
+
+  /// Undo is limited to the current, open workout. Relogging the stable set ID
+  /// then awards exactly once again. All linked writes roll back together.
+  Future<void> undoSet(
+    String setAttemptId, {
+    required String currentSessionId,
+  }) async {
+    await database.transaction(() async {
+      final set = await (database.select(
+        database.setAttempts,
+      )..where((t) => t.setAttemptId.equals(setAttemptId))).getSingleOrNull();
+      if (set == null) return; // Repeated undo is harmless.
+      final attempt = await (database.select(
+        database.exerciseAttempts,
+      )..where((t) => t.attemptId.equals(set.attemptId))).getSingle();
+      final session = await database.getWorkoutSession(attempt.sessionId);
+      if (attempt.sessionId != currentSessionId ||
+          session == null ||
+          session.endedAt != null ||
+          attempt.status == 'abandoned') {
+        throw StateError(
+          'Only sets in an ongoing exercise/workout can be undone.',
+        );
+      }
+      if (set.historyEntryId != null) {
+        await (database.delete(
+          database.historyEntries,
+        )..where((t) => t.id.equals(set.historyEntryId!))).go();
+      }
+      await (database.delete(
+        database.setAttempts,
+      )..where((t) => t.setAttemptId.equals(setAttemptId))).go();
+      await (database.delete(database.xpEvents)..where(
+            (t) => t.eventKey.isIn([
+              'set:$setAttemptId',
+              'exercise:${attempt.attemptId}',
+              'workout:${attempt.sessionId}',
+            ]),
+          ))
+          .go();
+      await (database.update(
+        database.exerciseAttempts,
+      )..where((t) => t.attemptId.equals(attempt.attemptId))).write(
+        const ExerciseAttemptsCompanion(
+          status: Value('active'),
+          endedAt: Value(null),
+        ),
+      );
+    });
+    notifyListeners();
+  }
+
   Future<int> recoverUnfinishedAttempts({DateTime? endedAt}) =>
       database.markUnfinishedAttemptsAbandoned(endedAt: endedAt);
 

@@ -16,6 +16,7 @@ import 'package:gym_app/services/workout_feedback_settings.dart';
 import 'package:gym_app/services/gamification_service.dart';
 import 'package:gym_app/views/workout_completion_page.dart';
 import 'package:gym_app/widgets/workout_feedback_overlay.dart';
+import 'package:gym_app/views/exercise_history_page.dart';
 import 'dart:io';
 
 class SupersetInfo {
@@ -64,6 +65,78 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
   late List<FocusNode> _repsFocusNodes;
   late List<GlobalKey> _setKeys;
   bool _isRecordingSet = false;
+
+  Future<void> _correctLoggedSet(int index, {bool undo = false}) async {
+    final attemptId = widget.exercise.sessionAttemptId;
+    final sessionId = WorkoutSessionManager.instance.currentSessionId;
+    if (_isRecordingSet || attemptId == null || sessionId == null) return;
+    setState(() => _isRecordingSet = true);
+    try {
+      final setId = '$attemptId:set:$index';
+      if (undo) {
+        await gamificationService.undoSet(setId, currentSessionId: sessionId);
+        dismissXpGainFeedback();
+        widget.exercise.sessionCompletedSetIndices.remove(index);
+        RestTimerManager.instance.stop();
+      } else {
+        final set = await (db.select(
+          db.setAttempts,
+        )..where((t) => t.setAttemptId.equals(setId))).getSingle();
+        if (set.historyEntryId == null) throw StateError('No history row');
+        await gamificationService.editHistorySet(
+          set.historyEntryId!,
+          weight: double.tryParse(_weightControllers[index].text) ?? double.nan,
+          reps: int.tryParse(_repsControllers[index].text) ?? -1,
+        );
+      }
+      _saveData();
+      await _loadHistory();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            undo
+                ? 'Set undone. Its XP was removed; you can log it again.'
+                : 'Set corrected. XP unchanged.',
+          ),
+        ),
+      );
+      if (undo) {
+        setState(() {
+          _lastFocusedSet = index;
+          widget.exercise.currentSetIndex = index;
+        });
+        _repsFocusNodes[index].requestFocus();
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not change this set. Check the weight/reps and try again.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isRecordingSet = false);
+    }
+  }
+
+  Future<void> _openHistory() async {
+    _saveData();
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ExerciseHistoryPage(
+          exercise: widget.exercise,
+          database: db,
+          service: gamificationService,
+        ),
+      ),
+    );
+    if (mounted) await _loadHistory();
+  }
 
   Future<void> _showXpAward(
     XpAward award, {
@@ -376,6 +449,16 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
   }
 
   void _removeSet() {
+    if (widget.exercise.sessionCompletedSetIndices.contains(
+      widget.exercise.sets.length - 1,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Undo the logged set before removing it.'),
+        ),
+      );
+      return;
+    }
     HapticFeedback.lightImpact();
     if (widget.exercise.sets.length > 1) {
       setState(() {
@@ -399,6 +482,10 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
   Future<void> _logSet({bool finish = false}) async {
     if (_isRecordingSet) return;
     final loggedSetIndex = _lastFocusedSet;
+    if (widget.exercise.sessionCompletedSetIndices.contains(loggedSetIndex)) {
+      await _correctLoggedSet(loggedSetIndex);
+      return;
+    }
     final weight = _weightControllers[_lastFocusedSet].text;
     if (weight.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -775,6 +862,13 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
           CustomScrollView(
             slivers: [
               SliverAppBar(
+                actions: [
+                  IconButton(
+                    tooltip: 'Progress & history',
+                    onPressed: _openHistory,
+                    icon: const Icon(Icons.insights_outlined),
+                  ),
+                ],
                 expandedHeight: 170,
                 pinned: true,
                 stretch: true,
@@ -1379,6 +1473,30 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                                 ],
                               ),
                             ),
+                            if (widget.exercise.sessionCompletedSetIndices
+                                .contains(index))
+                              PopupMenuButton<String>(
+                                tooltip: 'Logged set options',
+                                icon: Icon(
+                                  Icons.check_circle,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                enabled: !_isRecordingSet,
+                                onSelected: (action) => _correctLoggedSet(
+                                  index,
+                                  undo: action == 'undo',
+                                ),
+                                itemBuilder: (_) => const [
+                                  PopupMenuItem(
+                                    value: 'save',
+                                    child: Text('Save correction'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'undo',
+                                    child: Text('Undo set'),
+                                  ),
+                                ],
+                              ),
                           ],
                         ),
                       ),

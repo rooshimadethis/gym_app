@@ -10,6 +10,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gym_app/main.dart'; // for db access
 import 'package:gym_app/services/theme_manager.dart';
 import 'package:gym_app/services/workout_feedback_settings.dart';
+import 'package:gym_app/services/backup_service.dart';
+import 'package:gym_app/services/workout_session_manager.dart';
+import 'package:gym_app/services/rest_timer_manager.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -24,6 +27,27 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _warmupSetEnabled = false;
   bool _workoutHapticsEnabled = true;
   bool _workoutSoundEnabled = false;
+  bool _backupBusy = false;
+
+  Future<void> _runBackupAction(Future<void> Function() action) async {
+    if (_backupBusy) return;
+    setState(() => _backupBusy = true);
+    try {
+      await action();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not access the backup file. Please try again.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _backupBusy = false);
+    }
+  }
 
   @override
   void initState() {
@@ -82,6 +106,14 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _importExerciseData() async {
+    if (WorkoutSessionManager.instance.isWorkoutActive) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Finish your workout before restoring a backup.'),
+        ),
+      );
+      return;
+    }
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['json'],
@@ -92,23 +124,21 @@ class _SettingsPageState extends State<SettingsPage> {
         File file = File(result.files.single.path!);
         String content = await file.readAsString();
 
-        final data = jsonDecode(content) as Map<String, dynamic>;
-        final exercises = data['exercises_data'] as List;
-        final settings = data['settings'] as Map<String, dynamic>;
-        // Check for history data (new format)
-        final historyData = data.containsKey('history_data')
-            ? List<Map<String, dynamic>>.from(data['history_data'])
-            : null;
+        final backup = WorkoutBackup.parse(content);
 
         if (mounted) {
-          // Confirm overwrite if history exists
+          // Confirmation is read-only; persistence starts only after approval.
           final shouldImport = await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('Import Data'),
-              content: const Text(
-                'This will overwrite your current settings and exercise list.\n\n'
-                'For history, do you want to CLEAR existing history and replace it with the backup?',
+              title: const Text('Restore backup?'),
+              scrollable: true,
+              content: Text(
+                '${backup.exercises.length} exercises · ${backup.history.length} logged sets\n'
+                '${backup.sessions.length} workouts · ${backup.events.fold<int>(0, (total, event) => total + event.xpAmount)} XP\n\n'
+                'This replaces your exercises, history, XP, sessions, and settings. Export your current data first if you want to keep it.\n\n'
+                '${backup.isLegacy ? 'This older export has no XP/session records; those will be reset.\n\n' : ''}'
+                'Unfinished workouts restore as ended attempts, with earned XP kept.',
               ),
               actions: [
                 TextButton(
@@ -116,60 +146,30 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: const Text('Cancel'),
                 ),
                 TextButton(
-                  onPressed: () async {
-                    // "Merge" logic could go here, but complex.
-                    // For now, let's treat "Cancel" as abort, and just add a separate "Keep & Append" button?
-                    // Simplifying to: Import = Restore state.
-                    await db.deleteAllHistory();
-                    if (context.mounted) {
-                      Navigator.pop(context, true);
-                    }
-                  },
+                  onPressed: () => Navigator.pop(context, true),
                   child: const Text(
-                    'Clear & Import',
+                    'Replace & restore',
                     style: TextStyle(color: Colors.red),
                   ),
                 ),
-                if (historyData != null)
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Append History'),
-                  ),
               ],
             ),
           );
 
           if (shouldImport == true) {
             final prefs = await SharedPreferences.getInstance();
-            await prefs.setString('exercises_data', jsonEncode(exercises));
-            await prefs.setInt('timer_duration', settings['timer_duration']);
-            await prefs.setBool(
-              'notifications_enabled',
-              settings['notifications_enabled'],
-            );
-            if (settings.containsKey('warmup_set_enabled')) {
-              await prefs.setBool(
-                'warmup_set_enabled',
-                settings['warmup_set_enabled'],
-              );
-            }
-
-            if (historyData != null) {
-              await db.batchImportHistory(historyData);
-            }
-
-            // Flag migration as done since we just imported explicit state
-            await prefs.setBool('legacy_drift_migration_v1', true);
-
-            _loadSettings();
+            await BackupService(db, prefs).restore(backup);
+            await ThemeManager.instance.init();
+            await WorkoutFeedbackSettings.instance.init();
+            await RestTimerManager.instance.init();
+            await WorkoutSessionManager.instance.init();
+            if (!mounted) return;
+            await _loadSettings();
 
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Data imported successfully!')),
+                const SnackBar(content: Text('Backup restored successfully.')),
               );
-              // Trigger a reload of exercises in main app if we could,
-              // but since user will likely go back, the app logic usually reloads on focus or init.
-              // To be safe, we might need to tell main to reload, but simpler to just pop or show success.
             }
           }
         }
@@ -177,7 +177,11 @@ class _SettingsPageState extends State<SettingsPage> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error importing data: ${e.toString()}'),
+            content: Text(
+              e is FormatException
+                  ? e.message
+                  : 'Restore could not finish. Reopen the app and check your data before trying again.',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -192,35 +196,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _exportExerciseData() async {
     final prefs = await SharedPreferences.getInstance();
-    final exercisesJson = prefs.getString('exercises_data');
-    final timerDuration = prefs.getInt('timer_duration') ?? 120;
-    final notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
-    final warmupSetEnabled = prefs.getBool('warmup_set_enabled') ?? false;
-
-    if (exercisesJson == null || exercisesJson.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No exercise data to export.')),
-      );
-      return;
-    }
-
-    final data = {
-      'exercises_data': jsonDecode(exercisesJson),
-      'settings': {
-        'timer_duration': timerDuration,
-        'notifications_enabled': notificationsEnabled,
-        'warmup_set_enabled': warmupSetEnabled,
-      },
-    };
-
-    // Export History from DB
-    final history = await db.getAllHistory();
-    // drift's toJson converts DateTime to millisecondsSinceEpoch by default if not configured otherwise
-    data['history_data'] = history.map((e) => e.toJson()).toList();
 
     try {
-      final jsonString = jsonEncode(data);
+      final jsonString = await BackupService(db, prefs).export();
       final bytes = Uint8List.fromList(utf8.encode(jsonString));
 
       final now = DateTime.now();
@@ -349,13 +327,13 @@ class _SettingsPageState extends State<SettingsPage> {
               _buildSectionHeader('Data Management'),
               _buildSettingTile(
                 icon: Icons.file_upload_outlined,
-                title: 'Import Exercise Data',
-                onTap: _importExerciseData,
+                title: 'Restore backup',
+                onTap: () => _runBackupAction(_importExerciseData),
               ),
               _buildSettingTile(
                 icon: Icons.file_download_outlined,
-                title: 'Export Exercise Data',
-                onTap: _exportExerciseData,
+                title: 'Export complete backup',
+                onTap: () => _runBackupAction(_exportExerciseData),
               ),
               const SizedBox(height: 24),
               _buildSectionHeader('Preferences'),

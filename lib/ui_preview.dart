@@ -1,16 +1,61 @@
 // Development entry point: flutter run -t lib/ui_preview.dart
 // Uses production widgets without opening or modifying the workout database.
+import 'package:drift/drift.dart' show Value;
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'database/database.dart';
+import 'models/models.dart';
 import 'domain/gamification.dart';
 import 'services/gamification_service.dart';
 import 'views/workout_completion_page.dart';
+import 'views/exercise_history_page.dart';
 import 'widgets/workout_feedback_overlay.dart';
 import 'widgets/workout_finish_dialog.dart';
 import 'widgets/fatigue_check_in_modal.dart';
 import 'widgets/exercise_xp_tier_selector.dart';
+import 'widgets/exercise_completion_undo.dart';
 
 void main() {
   runApp(const FeedbackPreviewApp());
+}
+
+Future<void> _previewHistory(BuildContext context) async {
+  final database = AppDatabase.forTesting(NativeDatabase.memory());
+  final service = GamificationService(database);
+  try {
+    for (var session = 0; session < 4; session++) {
+      for (var set = 0; set < 3; set++) {
+        await database.addHistoryEntry(
+          HistoryEntriesCompanion.insert(
+            exerciseName: 'Chest Press',
+            exerciseId: const Value('preview-chest'),
+            weight: 100,
+            reps: 8 + session - set,
+            timestamp: DateTime.now().subtract(
+              Duration(days: (3 - session) * 7, minutes: 2 - set),
+            ),
+            workoutPosition: 1,
+            fatigueScore: 0,
+            sessionId: 'preview-$session',
+          ),
+        );
+      }
+    }
+    if (!context.mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ExerciseHistoryPage(
+          exercise: Exercise(id: 'preview-chest', name: 'Chest Press'),
+          database: database,
+          service: service,
+        ),
+      ),
+    );
+  } finally {
+    service.dispose();
+    await database.close();
+  }
 }
 
 void _previewXp(
@@ -52,6 +97,21 @@ class FeedbackPreviewApp extends StatelessWidget {
         body: ListView(
           padding: const EdgeInsets.all(24),
           children: [
+            FilledButton(
+              onPressed: () => _previewHistory(context),
+              child: const Text('Progress & corrections'),
+            ),
+            FilledButton(
+              onPressed: () {
+                _previewXp(context, xp: 18);
+                showExerciseCompletionUndo(
+                  context,
+                  exerciseName: 'Chest Press',
+                  onUndo: dismissXpGainFeedback,
+                );
+              },
+              child: const Text('Completion undo + XP'),
+            ),
             FilledButton(
               onPressed: () => showExerciseXpTierDialog(
                 context,

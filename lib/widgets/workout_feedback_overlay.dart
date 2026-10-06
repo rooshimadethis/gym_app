@@ -8,6 +8,13 @@ OverlayEntry? _activeXpEntry;
 XpLevelProgress? _activeXpBefore;
 int _activeXpAmount = 0;
 
+void dismissXpGainFeedback() {
+  _activeXpEntry?.remove();
+  _activeXpEntry = null;
+  _activeXpBefore = null;
+  _activeXpAmount = 0;
+}
+
 Future<void> showWorkoutStartCelebration(BuildContext context) async {
   final overlay = Overlay.of(context);
   final reduceMotion = MediaQuery.disableAnimationsOf(context);

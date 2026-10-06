@@ -156,27 +156,25 @@ class AppDatabase extends _$AppDatabase {
   Future<List<HistoryEntry>> getPerformanceHistoryForExercise(
     String exerciseId, {
     String? legacyExerciseName,
-    int limit = 10,
+    int? limit = 10,
   }) {
-    return (select(historyEntries)
-          ..where(
-            (tbl) =>
-                tbl.exerciseId.equals(exerciseId) |
-                (legacyExerciseName == null
-                    ? const Constant(false)
-                    : tbl.exerciseId.isNull() &
-                          tbl.exerciseName.equals(legacyExerciseName)),
-          )
-          ..where(_completedOrLegacyHistory)
-          ..orderBy([
-            (tbl) => OrderingTerm(
-              expression: tbl.timestamp,
-              mode: OrderingMode.desc,
-            ),
-            (tbl) => OrderingTerm(expression: tbl.id, mode: OrderingMode.desc),
-          ])
-          ..limit(limit))
-        .get();
+    final query = (select(historyEntries)
+      ..where(
+        (tbl) =>
+            tbl.exerciseId.equals(exerciseId) |
+            (legacyExerciseName == null
+                ? const Constant(false)
+                : tbl.exerciseId.isNull() &
+                      tbl.exerciseName.equals(legacyExerciseName)),
+      )
+      ..where(_completedOrLegacyHistory)
+      ..orderBy([
+        (tbl) =>
+            OrderingTerm(expression: tbl.timestamp, mode: OrderingMode.desc),
+        (tbl) => OrderingTerm(expression: tbl.id, mode: OrderingMode.desc),
+      ]));
+    if (limit != null) query.limit(limit);
+    return query.get();
   }
 
   Future<int> getExerciseSessionPosition(
