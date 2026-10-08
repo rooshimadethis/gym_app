@@ -299,6 +299,8 @@ class _MyHomePageState extends State<MyHomePage> {
         Exercise(name: 'Deadlift'),
       ];
       for (var exercise in _allExercises) {
+        exercise.warmupSetEnabled =
+            prefs.getBool('warmup_set_enabled') ?? false;
         final assetPath = _exerciseImageMap[exercise.name];
         if (assetPath != null) {
           exercise.hasLocalImage = await _checkAssetExists(assetPath);
@@ -307,6 +309,7 @@ class _MyHomePageState extends State<MyHomePage> {
           }
         }
       }
+      await _saveExercises();
     } else {
       final exercisesList = jsonDecode(exercisesJson) as List;
       final needsExerciseMetadataMigration = exercisesList.any(
@@ -315,11 +318,16 @@ class _MyHomePageState extends State<MyHomePage> {
             Exercise.metadataNeedsMigration(json),
       );
       _allExercises = exercisesList
-          .map((json) => Exercise.fromJson(json))
+          .map(
+            (json) => Exercise.fromJson(
+              json,
+              legacyWarmupSetEnabled:
+                  prefs.getBool('warmup_set_enabled') ?? false,
+            ),
+          )
           .toList();
       if (needsExerciseMetadataMigration) {
-        // Persist generated IDs and defaulted tiers so they remain stable on
-        // the next launch.
+        // Persist IDs, tiers, and inherited warmup choices once.
         await _saveExercises();
       }
       // Re-check asset existence for loaded exercises in case assets changed

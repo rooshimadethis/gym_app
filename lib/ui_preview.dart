@@ -14,6 +14,9 @@ import 'widgets/workout_finish_dialog.dart';
 import 'widgets/fatigue_check_in_modal.dart';
 import 'widgets/exercise_xp_tier_selector.dart';
 import 'widgets/exercise_completion_undo.dart';
+import 'logic/exercise_progress.dart';
+import 'widgets/exercise_volume_chart.dart';
+import 'widgets/exercise_warmup_toggle.dart';
 
 void main() {
   runApp(const FeedbackPreviewApp());
@@ -97,6 +100,15 @@ class FeedbackPreviewApp extends StatelessWidget {
         body: ListView(
           padding: const EdgeInsets.all(24),
           children: [
+            FilledButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const _ExerciseProgressPreview(),
+                ),
+              ),
+              child: const Text('Exercise warmup & volume'),
+            ),
             FilledButton(
               onPressed: () => _previewHistory(context),
               child: const Text('Progress & corrections'),
@@ -208,6 +220,54 @@ class _KeyboardPreview extends StatelessWidget {
           ),
         ],
       ),
+    ),
+  );
+}
+
+class _ExerciseProgressPreview extends StatefulWidget {
+  const _ExerciseProgressPreview();
+  @override
+  State<_ExerciseProgressPreview> createState() =>
+      _ExerciseProgressPreviewState();
+}
+
+class _ExerciseProgressPreviewState extends State<_ExerciseProgressPreview> {
+  bool _warmup = true;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Chest Press')),
+    body: ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        ExerciseWarmupToggle(
+          enabled: _warmup,
+          onChanged: (value) => setState(() => _warmup = value),
+        ),
+        const SizedBox(height: 12),
+        ExerciseVolumeChart(
+          sessions: summarizeExerciseProgress([
+            for (var session = 0; session < 6; session++)
+              for (var set = 0; set < 3; set++)
+                HistoryEntry(
+                  id: session * 3 + set,
+                  exerciseName: 'Chest Press',
+                  isWarmup: false,
+                  weight: 100,
+                  reps: 6 + session - set,
+                  timestamp: DateTime(2026, 9, 1 + session * 5),
+                  workoutPosition: 1,
+                  fatigueScore: 0,
+                  sessionId: 'preview-$session',
+                ),
+          ]),
+        ),
+        const SizedBox(height: 16),
+        const Text('SET 1', style: TextStyle(fontWeight: FontWeight.w800)),
+        const TextField(
+          decoration: InputDecoration(labelText: 'Reps'),
+          keyboardType: TextInputType.number,
+        ),
+      ],
     ),
   );
 }

@@ -10,6 +10,9 @@ class ExerciseSessionProgress {
   DateTime get date => sets.first.timestamp;
   List<HistoryEntry> get workingSets =>
       sets.where((s) => !s.isWarmup && s.reps > 0).toList();
+  double get volume =>
+      workingSets.fold(0, (total, set) => total + set.weight * set.reps);
+
   HistoryEntry? get bestSet {
     final eligible = workingSets
       ..sort((a, b) {

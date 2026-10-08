@@ -71,6 +71,7 @@ void main() {
         Exercise.metadataNeedsMigration({
           'id': exercise.id,
           'xpTier': 'standard',
+          'warmupSetEnabled': false,
         }),
         isFalse,
       );

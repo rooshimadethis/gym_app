@@ -4,6 +4,7 @@ import 'package:gym_app/logic/exercise_progress.dart';
 import 'package:gym_app/models/models.dart';
 import 'package:gym_app/services/gamification_service.dart';
 import 'package:gym_app/widgets/edit_set_dialog.dart';
+import 'package:gym_app/widgets/exercise_volume_chart.dart';
 
 class ExerciseHistoryPage extends StatefulWidget {
   const ExerciseHistoryPage({
@@ -118,6 +119,8 @@ class _ExerciseHistoryPageState extends State<ExerciseHistoryPage> {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            ExerciseVolumeChart(sessions: sessions),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Text(
@@ -141,6 +144,7 @@ class _ExerciseHistoryPageState extends State<ExerciseHistoryPage> {
                         '${session.date.month}/${session.date.day}/${session.date.year}',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
+                      Text('Volume · ${formatWeight(session.volume)} lb·reps'),
                       if (session.bestSet case final best?)
                         Text(
                           'Best · ${formatWeight(best.weight)} lbs × ${best.reps}',

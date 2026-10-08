@@ -24,7 +24,6 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _timerController = TextEditingController();
   bool _notificationsEnabled = true;
-  bool _warmupSetEnabled = false;
   bool _workoutHapticsEnabled = true;
   bool _workoutSoundEnabled = false;
   bool _backupBusy = false;
@@ -61,7 +60,6 @@ class _SettingsPageState extends State<SettingsPage> {
     _timerController.text = timerDuration.toString();
     setState(() {
       _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
-      _warmupSetEnabled = prefs.getBool('warmup_set_enabled') ?? false;
       _workoutHapticsEnabled = WorkoutFeedbackSettings.instance.hapticsEnabled;
       _workoutSoundEnabled = WorkoutFeedbackSettings.instance.soundEnabled;
     });
@@ -78,14 +76,6 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.setBool('notifications_enabled', value);
     setState(() {
       _notificationsEnabled = value;
-    });
-  }
-
-  Future<void> _saveWarmupSetSetting(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('warmup_set_enabled', value);
-    setState(() {
-      _warmupSetEnabled = value;
     });
   }
 
@@ -355,28 +345,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   child: Icon(
                     Icons.notifications_outlined,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-              ),
-              SwitchListTile(
-                title: const Text(
-                  'Warmup Set',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: const Text('Skip auto-fill for the first set'),
-                value: _warmupSetEnabled,
-                onChanged: _saveWarmupSetSetting,
-                secondary: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.fitness_center_outlined,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 ),

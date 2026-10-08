@@ -403,6 +403,7 @@ void main() {
     });
     await tester.pumpAndSettle();
     expect(find.text('1 completed session'), findsOneWidget);
+    await tester.scrollUntilVisible(find.byIcon(Icons.edit_outlined), 200);
     await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
     tester.view.viewInsets = const FakeViewPadding(bottom: 300);
@@ -420,6 +421,10 @@ void main() {
       find.textContaining('Best recorded set · 110 lbs × 10'),
       findsOneWidget,
     );
+    tester.view.viewInsets = const FakeViewPadding();
+    await tester.drag(find.byType(ListView), const Offset(0, 600));
+    await tester.pumpAndSettle();
+    expect(find.text('1100 lb·reps'), findsOneWidget);
     expect(await service.lifetimeXp, 18);
   });
   testWidgets('edit dialog validates invalid values before closing', (

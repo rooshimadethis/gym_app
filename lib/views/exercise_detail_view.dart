@@ -5,7 +5,6 @@ import 'package:gym_app/models/models.dart';
 import 'package:gym_app/services/rest_timer_manager.dart';
 import 'package:gym_app/widgets/next_exercise_modal.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gym_app/database/database.dart';
 import 'package:gym_app/main.dart'; // to access global 'db'
 import 'package:gym_app/widgets/fatigue_check_in_modal.dart';
@@ -17,6 +16,10 @@ import 'package:gym_app/services/gamification_service.dart';
 import 'package:gym_app/views/workout_completion_page.dart';
 import 'package:gym_app/widgets/workout_feedback_overlay.dart';
 import 'package:gym_app/views/exercise_history_page.dart';
+import 'package:gym_app/logic/exercise_progress.dart';
+import 'package:gym_app/services/exercise_settings.dart';
+import 'package:gym_app/widgets/exercise_warmup_toggle.dart';
+import 'package:gym_app/widgets/exercise_volume_chart.dart';
 import 'dart:io';
 
 class SupersetInfo {
@@ -236,7 +239,27 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
     );
   }
 
-  bool _warmupSetEnabled = false;
+  final _warmupKey = GlobalKey();
+  bool _savingWarmup = false;
+
+  bool get _warmupSetEnabled => widget.exercise.warmupSetEnabled;
+
+  Future<void> _changeWarmup(bool enabled) async {
+    setState(() => _savingWarmup = true);
+    try {
+      await saveExerciseWarmup(widget.exercise, enabled);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save warmup setting. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingWarmup = false);
+    }
+  }
 
   @override
   void initState() {
@@ -253,7 +276,6 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
       _fatigueScore = widget.exercise.sessionFatigueScore;
     }
 
-    _loadSettings();
     _loadHistory();
     _initializeControllersAndFocusNodes();
 
@@ -291,18 +313,11 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
     _generateSuggestion(); // Regenerate based on actual fatigue check-in
   }
 
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _warmupSetEnabled = prefs.getBool('warmup_set_enabled') ?? false;
-    });
-  }
-
   Future<void> _loadHistory() async {
     final history = await db.getPerformanceHistoryForExercise(
       widget.exercise.id,
       legacyExerciseName: widget.exercise.name,
-      limit: 40, // Fetch more to ensure we cover multiple past sessions
+      limit: null, // Volume needs every set, including in long sessions.
     );
     if (mounted) {
       setState(() {
@@ -480,7 +495,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
   }
 
   Future<void> _logSet({bool finish = false}) async {
-    if (_isRecordingSet) return;
+    if (_isRecordingSet || _savingWarmup) return;
     final loggedSetIndex = _lastFocusedSet;
     if (widget.exercise.sessionCompletedSetIndices.contains(loggedSetIndex)) {
       await _correctLoggedSet(loggedSetIndex);
@@ -670,7 +685,7 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
   }
 
   Future<void> _recordFailedSetAndAbandon({required bool endWorkout}) async {
-    if (_isRecordingSet) return;
+    if (_isRecordingSet || _savingWarmup) return;
     _saveData();
     _isRecordingSet = true;
     late final String attemptId;
@@ -864,6 +879,21 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
               SliverAppBar(
                 actions: [
                   IconButton(
+                    tooltip: 'Warmup setting',
+                    onPressed: () {
+                      FocusScope.of(context).unfocus();
+                      final target = _warmupKey.currentContext;
+                      if (target != null) {
+                        Scrollable.ensureVisible(
+                          target,
+                          alignment: .15,
+                          duration: const Duration(milliseconds: 300),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.tune_outlined),
+                  ),
+                  IconButton(
                     tooltip: 'Progress & history',
                     onPressed: _openHistory,
                     icon: const Icon(Icons.insights_outlined),
@@ -967,6 +997,20 @@ class _ExerciseDetailViewState extends State<ExerciseDetailView>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      ExerciseWarmupToggle(
+                        key: _warmupKey,
+                        enabled: _warmupSetEnabled,
+                        onChanged:
+                            _savingWarmup ||
+                                _isRecordingSet ||
+                                widget.exercise.sessionAttemptId != null
+                            ? null
+                            : _changeWarmup,
+                      ),
+                      const SizedBox(height: 12),
+                      ExerciseVolumeChart(
+                        sessions: summarizeExerciseProgress(_history),
+                      ),
                       if (_suggestion != null) ...[
                         const SizedBox(height: 16),
                         Container(

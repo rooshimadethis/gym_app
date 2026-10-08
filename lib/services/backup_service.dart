@@ -68,6 +68,10 @@ class WorkoutBackup {
             row['sets'] is! List) {
           throw const FormatException('Invalid exercise data.');
         }
+        if (row.containsKey('warmupSetEnabled') &&
+            row['warmupSetEnabled'] is! bool) {
+          throw const FormatException('Invalid exercise warmup setting.');
+        }
         for (final set in row['sets'] as List) {
           if (set is! Map ||
               set['weight'] is! String ||
@@ -76,7 +80,6 @@ class WorkoutBackup {
           }
         }
       }
-      final exercises = exerciseJson.map(Exercise.fromJson).toList();
       final rawSettings = Map<String, dynamic>.from(data['settings'] as Map);
       final settings = <String, Object>{};
       for (final entry in settingTypes.entries) {
@@ -87,6 +90,15 @@ class WorkoutBackup {
         }
         settings[entry.key] = value as Object;
       }
+      final exercises = exerciseJson
+          .map(
+            (row) => Exercise.fromJson(
+              row,
+              legacyWarmupSetEnabled:
+                  settings['warmup_set_enabled'] as bool? ?? false,
+            ),
+          )
+          .toList();
       if ((settings['timer_duration'] as int? ?? 120) <= 0 ||
           (settings['theme_mode'] as int? ?? 2) < 0 ||
           (settings['theme_mode'] as int? ?? 2) > 2) {

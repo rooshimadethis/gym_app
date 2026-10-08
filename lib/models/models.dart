@@ -33,6 +33,7 @@ class Exercise {
   Set<int> sessionCompletedSetIndices;
   String? sessionAttemptId;
   ExerciseXpTier xpTier;
+  bool warmupSetEnabled;
 
   Exercise({
     String? id,
@@ -49,6 +50,7 @@ class Exercise {
     Set<int>? sessionCompletedSetIndices,
     this.sessionAttemptId,
     this.xpTier = ExerciseXpTier.standard,
+    this.warmupSetEnabled = false,
   }) : id = _stableExerciseId(id),
        sets = sets ?? [SetData(), SetData(), SetData()],
        sessionCompletedSetIndices = sessionCompletedSetIndices ?? <int>{};
@@ -63,9 +65,13 @@ class Exercise {
     'supersetId': supersetId,
     'supersetOrder': supersetOrder,
     'xpTier': xpTier.name,
+    'warmupSetEnabled': warmupSetEnabled,
   };
 
-  factory Exercise.fromJson(Map<String, dynamic> json) => Exercise(
+  factory Exercise.fromJson(
+    Map<String, dynamic> json, {
+    bool legacyWarmupSetEnabled = false,
+  }) => Exercise(
     id: _nonEmptyString(json['id']),
     name: json['name'] as String? ?? 'Unnamed Exercise',
     imageUrl: json['imageUrl'] as String?,
@@ -74,6 +80,8 @@ class Exercise {
     supersetId: json['supersetId'] as String?,
     supersetOrder: json['supersetOrder'] as int?,
     xpTier: _xpTierFromJson(json['xpTier']),
+    warmupSetEnabled:
+        json['warmupSetEnabled'] as bool? ?? legacyWarmupSetEnabled,
     sets:
         (json['sets'] as List?)
             ?.map((setJson) => SetData.fromJson(setJson))
@@ -86,13 +94,12 @@ class Exercise {
   }
 
   /// Returns true when loading this record should be followed by a save.
-  /// This lets old JSON acquire a stable ID and an explicit tier once, rather
-  /// than generating a new ID every time it is decoded.
+  /// Old JSON acquires a stable ID, explicit tier, and warmup preference once.
   static bool metadataNeedsMigration(Map<String, dynamic> json) {
     final id = _nonEmptyString(json['id']);
     final tier = json['xpTier'];
     final hasKnownTier = ExerciseXpTier.values.any((item) => item.name == tier);
-    return id == null || !hasKnownTier;
+    return id == null || !hasKnownTier || json['warmupSetEnabled'] is! bool;
   }
 
   static String? _nonEmptyString(Object? value) {
